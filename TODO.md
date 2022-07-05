@@ -1,3 +1,8 @@
+# Todo
+
+- Allow ISO8601 string timestamps (UTC) in input data
+- Possibly allow localized time in plot outputs
+
 # Functionality
 
 ## `picarrito init`
