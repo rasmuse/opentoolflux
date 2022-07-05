@@ -1,0 +1,8 @@
+-r tests.in
+pip-tools
+tox
+build
+twine
+black
+isort
+pre-commit
