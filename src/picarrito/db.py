@@ -5,7 +5,7 @@ import glob
 import itertools
 from io import StringIO
 from pathlib import Path
-from typing import Iterable, Iterator, Mapping, Sequence, Union
+from typing import Iterable, Iterator, Literal, Mapping, Sequence, Union
 
 import pandas as pd
 
@@ -15,7 +15,20 @@ MILLISECOND_NUMPY_UNIT = "datetime64[ms]"
 MILLISECONDS_PER_SECOND = 1000
 
 Colname = str
-DTypeName = str
+DTypeName = Literal[
+    "uint8",
+    "uint16",
+    "uint32",
+    "uint64",
+    "int8",
+    "int16",
+    "int32",
+    "int64",
+    "float16",
+    "float32",
+    "float64",
+    "bool",
+]
 DTypes = Mapping[Colname, DTypeName]
 
 
