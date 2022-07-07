@@ -1,4 +1,5 @@
 import io
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Tuple, Type, Union
@@ -296,3 +297,54 @@ def test_update_db():
     with pytest.raises(ValueError):
         db_2_missing_column = build_db([2.2, 3.3], {})
         picarrito.db.update(db_1, db_2_missing_column)
+
+
+def test_read_files(tmp_path: Path):
+    files = {
+        "dir/subdir1/file1.dat": "\n".join(
+            [
+                "A,B",
+                "2.2,2",
+            ]
+        ),
+        "dir/subdir2/another_file2.dat": "\n".join(
+            [
+                "A,B",
+                "3.3,3",
+            ]
+        ),
+        "dir/subdir3/file3.dat": "\n".join(
+            [
+                "A,B",
+                "4.4,4",
+                "1.1,1",
+            ]
+        ),
+    }
+
+    expected_result = build_db([1.1, 2.2, 3.3, 4.4], {"B": ("uint8", [1, 2, 3, 4])})
+
+    for relpath, contents in files.items():
+        dst_path = tmp_path / relpath
+        dst_path.parent.mkdir(parents=True)
+        with open(dst_path, "w") as f:
+            f.write(contents)
+
+    cwd = Path.cwd()
+    os.chdir(tmp_path)
+    result = picarrito.db.read_src_files(
+        ["dir/**/file*.dat", "dir/subdir*/another*.dat"],
+        {"A": "float32", "B": "uint8"},
+        "A",
+        ",",
+    )
+    os.chdir(cwd)
+
+    pandas.testing.assert_frame_equal(result, expected_result)
+
+
+def test_read_files_empty():
+    dtypes = {"x": "float32", "y": "uint8"}
+    result = picarrito.db.read_src_files([], {"t": "float64", **dtypes}, "t")
+    assert len(result) == 0
+    assert result.dtypes.to_dict() == {picarrito.db.EXCLUDE_COLUMN: "bool", **dtypes}
