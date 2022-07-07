@@ -29,7 +29,7 @@ class SourceParseCase:
     dtypes: Mapping[str, str]
     timestamp_col: str
     expected_result: Union[pd.DataFrame, Type[Exception]]
-    sep: Optional[str] = None
+    sep: str = r"\s+"
 
 
 def build_db(
@@ -253,17 +253,16 @@ def test_source_file_parsing(case: SourceParseCase):
     buffer = io.StringIO(case.src_text)
 
     if isinstance(case.expected_result, pd.DataFrame):
-        if case.sep is None:
-            result = picarrito.db.read_src_file(buffer, case.dtypes, case.timestamp_col)
-        else:
-            result = picarrito.db.read_src_file(
-                buffer, case.dtypes, case.timestamp_col, sep=case.sep
-            )
+        result = picarrito.db.read_src_file(
+            buffer, case.dtypes, case.timestamp_col, case.sep
+        )
         print(result)
         pandas.testing.assert_frame_equal(result, case.expected_result)
     else:
         with pytest.raises(case.expected_result):
-            picarrito.db.read_src_file(buffer, case.dtypes, case.timestamp_col)
+            picarrito.db.read_src_file(
+                buffer, case.dtypes, case.timestamp_col, case.sep
+            )
 
 
 @pytest.mark.parametrize("case", source_parse_cases)
@@ -345,6 +344,6 @@ def test_read_files(tmp_path: Path):
 
 def test_read_files_empty():
     dtypes = {"x": "float32", "y": "uint8"}
-    result = picarrito.db.read_src_files([], {"t": "float64", **dtypes}, "t")
+    result = picarrito.db.read_src_files([], {"t": "float64", **dtypes}, "t", ",")
     assert len(result) == 0
     assert result.dtypes.to_dict() == {picarrito.db.EXCLUDE_COLUMN: "bool", **dtypes}

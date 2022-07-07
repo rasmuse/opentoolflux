@@ -11,7 +11,6 @@ import pandas as pd
 
 TIMESTAMP_COLUMN = "__TIMESTAMP__"
 EXCLUDE_COLUMN = "__EXCLUDE__"
-DEFAULT_SEP = r"\s+"
 MILLISECOND_NUMPY_UNIT = "datetime64[ms]"
 MILLISECONDS_PER_SECOND = 1000
 
@@ -33,7 +32,7 @@ def read_src_file(
     path_or_buffer: Union[Path, StringIO],
     dtypes: DTypes,
     timestamp_col: Colname,
-    sep=DEFAULT_SEP,
+    sep: str,
 ) -> pd.DataFrame:
     f"""
     Read the data file at `path`, keeping only the columns listed as keys in `dtypes`
@@ -53,7 +52,7 @@ def read_src_files(
     glob_patterns: list[str],
     dtypes: DTypes,
     timestamp_col: Colname,
-    sep: str = DEFAULT_SEP,
+    sep: str,
 ) -> pd.DataFrame:
     paths = _find_files(glob_patterns)
     datasets = (read_src_file(path, dtypes, timestamp_col, sep) for path in paths)
