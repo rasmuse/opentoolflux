@@ -6,7 +6,7 @@ import numpy as np
 import pandas.testing
 
 import picarrito.database
-from picarrito.analyze import Filter, filter_db, iter_measurements
+from picarrito.measurements import Filter, filter_db, iter_measurements
 from tests.util import build_db
 
 

@@ -10,7 +10,7 @@ import click
 import pydantic
 import toml
 
-from . import analyze, database, logging_config
+from . import database, logging_config, measurements
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +67,8 @@ def info(ctx: click.Context):
 
 def _iter_measurements(conf: Config):
     db = database.read_db(conf.general.outdir / _DB_FILENAME)
-    db = analyze.filter_db(db, conf.filters)
-    yield from analyze.iter_measurements(
+    db = measurements.filter_db(db, conf.filters)
+    yield from measurements.iter_measurements(
         db,
         conf.measurements.chamber_col,
         conf.measurements.max_gap,
@@ -98,7 +98,7 @@ class Measurements(pydantic.BaseModel):
 class Config(pydantic.BaseModel):
     general: General
     import_: Import = pydantic.Field(alias="import")
-    filters: Mapping[database.Colname, analyze.Filter] = pydantic.Field(
+    filters: Mapping[database.Colname, measurements.Filter] = pydantic.Field(
         default_factory=dict
     )
     measurements: Measurements
