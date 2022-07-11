@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import datetime
 import functools
+import logging
 import operator
 from dataclasses import dataclass
-from typing import Any, Iterable, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, Iterator, List, Mapping, Optional
 
 import pandas as pd
 
 from . import database
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -38,15 +41,41 @@ def _is_excluded_by_filter(values: pd.Series, filter_: Filter) -> pd.Series:
 def filter_db(
     db: pd.DataFrame, filters: Mapping[database.Colname, Filter]
 ) -> pd.DataFrame:
-    db.reset_index(inplace=True)
-    exclusion_votes = pd.DataFrame(
+    exclusions = _get_filter_exclusions(db, filters)
+    logger.info(f"Database has {len(db):,} rows.")
+    logger.info(_get_exclusions_summary(exclusions))
+    db = _apply_filter_exclusions(db, exclusions)
+    logger.info(f"Filtered database has {len(db):,} rows.")
+    return db
+
+
+def _get_filter_exclusions(
+    db: pd.DataFrame, filters: Mapping[database.Colname, Filter]
+) -> pd.DataFrame:
+    db = db.reset_index()
+    return pd.DataFrame(
         {
             colname: _is_excluded_by_filter(db[colname], filter_)
             for colname, filter_ in filters.items()
         }
     )
-    db.set_index(database.TIMESTAMP_COLUMN, inplace=True)
-    return db[~exclusion_votes.any(axis=1).values]
+
+
+def _apply_filter_exclusions(
+    db: pd.DataFrame, exclusions: pd.DataFrame
+) -> pd.DataFrame:
+    return db[~exclusions.any(axis=1).values]
+
+
+def _get_exclusions_summary(exclusions: pd.DataFrame) -> str:
+    exclusions = exclusions.assign(**{"All filters combined": exclusions.any(axis=1)})
+    summary = pd.DataFrame(
+        {
+            "Number rejected": exclusions.sum().apply("{:,}".format),
+            "Share rejected": exclusions.mean().apply("{:.1%}".format),
+        }
+    )
+    return f"Data excluded by filters:\n{summary}\n"
 
 
 def iter_measurements(
@@ -59,7 +88,48 @@ def iter_measurements(
     chamber_changed = db[chamber_column] != db[chamber_column].shift(1)
     gap_exceeded = db.index.to_series().diff() > max_gap
     measurement_number = (chamber_changed | gap_exceeded).cumsum()
+
+    measurement_metas = []
+
     for _, measurement in db.groupby(measurement_number):
         duration = measurement.index[-1] - measurement.index[0]
-        if min_duration <= duration <= max_duration:
+        accept = min_duration <= duration <= max_duration
+        measurement_metas.append(pd.Series(dict(duration=duration, accept=accept)))
+
+        if accept:
             yield measurement
+
+    logger.info(f"\n{_get_measurements_summary(measurement_metas)}\n")
+
+
+def _get_measurements_summary(metas: List[pd.Series]) -> str:
+    data = pd.DataFrame.from_records(metas)
+
+    summary = pd.DataFrame(
+        {
+            key: {
+                "Number of chunks": f"{len(subset):,}",
+                "Average duration": _format_duration(subset["duration"].mean()),
+                "Total duration": _format_duration(subset["duration"].sum()),
+            }
+            for key, subset in [
+                ("All chunks", data),
+                ("Rejected chunks", data[~data["accept"]]),
+                ("Final measurements", data[data["accept"]]),
+            ]
+        }
+    ).T
+
+    return str(summary)
+
+
+def _format_duration(duration: datetime.timedelta) -> str:
+    remaining_seconds = duration.total_seconds()
+    days = remaining_seconds // (3600 * 24)
+    remaining_seconds -= days * (3600 * 24)
+    hours = remaining_seconds // 3600
+    remaining_seconds -= hours * 3600
+    minutes = remaining_seconds // 60
+    remaining_seconds -= minutes * 60
+    days_str = f"{days:.0f} days " if days else ""
+    return f"{days_str}{hours:02.0f}:{minutes:02.0f}:{remaining_seconds:02.0f}"
