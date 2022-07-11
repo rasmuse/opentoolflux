@@ -11,8 +11,8 @@ import pandas as pd
 
 TIMESTAMP_COLUMN = "__TIMESTAMP__"
 EXCLUDE_COLUMN = "__EXCLUDE__"
-MILLISECOND_NUMPY_UNIT = "datetime64[ms]"
-MILLISECONDS_PER_SECOND = 1000
+MICROSECONDS_PER_SECOND = 1e6
+MICROSECOND_NUMPY_TIMESTAMP = "datetime64[us]"
 
 Colname = str
 DTypeName = Literal[
@@ -57,7 +57,8 @@ def read_src_file(
 
     Return data sorted by the index col ascending.
     """
-    data = pd.read_csv(path_or_buffer, sep=sep, dtype=dtypes).dropna()[list(dtypes)]
+    columns = list(dtypes)
+    data = pd.read_csv(path_or_buffer, sep=sep, dtype=dtypes, usecols=columns)
     return _dataframe_to_db(data, timestamp_col)
 
 
@@ -98,8 +99,35 @@ def _dataframe_to_db(data: pd.DataFrame, timestamp_col: Colname) -> pd.DataFrame
 
 
 def _convert_datetime(s: pd.Series) -> pd.Series:
-    if s.dtype.kind in {"i", "u", "f"}:
-        return s.mul(MILLISECONDS_PER_SECOND).round().astype(MILLISECOND_NUMPY_UNIT)
+    if s.dtype.kind in {"f"}:
+        # Floating point troubles!
+        #
+        # Numeric input data are interpreted as Unix timestamps in seconds.
+        #
+        # pandas timestamps are int64 Unix timestamps in nanoseconds.
+        #
+        # float64 can exactly represent integers up to 2**53, which in microseconds
+        # is in year 2255, but in nanoseconds is only in April 1970.
+        #
+        # To ensure that float input data is reproduced to the 6th decimal (microsecond)
+        # in the output, we take the following steps:
+        # (1) ensure that we are using float64 (exact integers to 2**53)
+        # (2) multiply by 10**6 (i.e., to microseconds)
+        # (3) round to closest microsecond
+        # (4) convert to int64
+        return (
+            s.astype("float64")
+            .mul(MICROSECONDS_PER_SECOND)
+            .round()
+            .astype(MICROSECOND_NUMPY_TIMESTAMP)
+        )
+    elif s.dtype.kind in {"i", "u"}:
+        # Integers can be converted directly
+        return s.astype("datetime64")
+    elif s.dtype.kind in {"O"}:
+        return pd.to_datetime(s, utc=True).dt.tz_localize(None).astype("datetime64")
+    else:
+        raise NotImplementedError(f"Cannot make datetime from dtype {s.dtype}.")
 
 
 def update(db_1: pd.DataFrame, db_2: pd.DataFrame):

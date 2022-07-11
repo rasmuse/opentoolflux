@@ -129,7 +129,7 @@ source_parse_cases = [
         ),
         sep=",",
     ),
-    SourceParseCase(  # rows with null values are dropped
+    SourceParseCase(  # rows with null values are NOT dropped
         "\n".join(
             [
                 "A    B",
@@ -144,9 +144,9 @@ source_parse_cases = [
         },
         "A",
         build_db(
-            [1.1, 3.1],
+            [1.1, 2.1, 3.1],
             {
-                "B": ("float32", [1.2, 3.2]),
+                "B": ("float32", [1.2, float("nan"), 3.2]),
             },
         ),
     ),
@@ -244,6 +244,31 @@ source_parse_cases = [
                 "B": ("uint8", [253, 255, 0, 1]),
             },
         ),
+    ),
+    SourceParseCase(  # timestamps can be specified as strings
+        "\n".join(
+            [
+                "A,B",
+                "0,1970-01-01 00:00:00.123+0000",
+                "1,1970-01-01 01:00:01.123+0100",
+                "2,1970-01-01T00:00:02.123",
+                "3,1970-01-01T00:00:03.123Z",
+                "4,1969-12-31 16:00:04.123-0800",
+                "5,1970-01-01 00:00:05.123",
+            ]
+        ),
+        {
+            "A": "uint8",
+            "B": "str",
+        },
+        "B",
+        build_db(
+            [0.123, 1.123, 2.123, 3.123, 4.123, 5.123],
+            {
+                "A": ("uint8", [0, 1, 2, 3, 4, 5]),
+            },
+        ),
+        sep=",",
     ),
 ]
 
