@@ -65,13 +65,9 @@ def read_src_files(
     timestamp_col: Colname,
     sep: str,
 ) -> pd.DataFrame:
-    paths = _find_files(glob_patterns)
+    paths = sorted(_find_files(glob_patterns))
     datasets = (read_src_file(path, dtypes, timestamp_col, sep) for path in paths)
-    return functools.reduce(
-        update,
-        datasets,
-        create_empty_db(dtypes, timestamp_col),
-    )
+    return update(create_empty_db(dtypes, timestamp_col), *datasets)
 
 
 def _find_files(glob_patterns: list[str]) -> Iterator[Path]:
@@ -126,17 +122,18 @@ def _convert_datetime(s: pd.Series) -> pd.Series:
         raise NotImplementedError(f"Cannot make datetime from dtype {s.dtype}.")
 
 
-def update(db_1: pd.DataFrame, db_2: pd.DataFrame):
-    if set(db_1.columns) != set(db_2.columns):
-        raise ValueError(
-            f"Unequal set of columns: {set(db_1.columns)}, {set(db_2.columns)}"
-        )
-    if not (db_1.dtypes == db_2.dtypes).all():
-        diff = pd.DataFrame({"lhs": db_1.dtypes, "rhs": db_2.dtypes}).loc[
-            lambda x: x["lhs"] != x["rhs"]
-        ]
-        raise ValueError(f"Conflicting dtypes: {diff}")
-    concatenated = pd.concat([db_1, db_2]).sort_index()
+def update(original: pd.DataFrame, *databases: pd.DataFrame) -> pd.DataFrame:
+    for db in databases:
+        if set(original.columns) != set(db.columns):
+            raise ValueError(
+                f"Unequal set of columns: {set(original.columns)}, {set(db.columns)}"
+            )
+        if original.dtypes.to_dict() != db.dtypes.to_dict():
+            diff = pd.DataFrame({"lhs": original.dtypes, "rhs": db.dtypes}).loc[
+                lambda x: x["lhs"] != x["rhs"]
+            ]
+            raise ValueError(f"Conflicting dtypes: {diff}")
+    concatenated = pd.concat([original, *databases]).sort_index()
     return concatenated[~concatenated.index.duplicated(keep="last")]
 
 
