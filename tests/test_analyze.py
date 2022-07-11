@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas.testing
 
+import picarrito.database
 from picarrito.analyze import Filter, filter_db, iter_measurements
 from tests.util import build_db
 
@@ -21,9 +22,12 @@ def test_filter():
     )
 
     filters = {
-        "A": Filter(disallow=["A", "B"]),
+        picarrito.database.TIMESTAMP_COLUMN: Filter(
+            min_value=np.datetime64("1970-01-01 00:00:02.53")
+        ),
+        "A": Filter(disallow=["A"]),
         "B": Filter(min_value=1, max_value=4),
-        "C": Filter(min_value=3.0, max_value=5.0),
+        "C": Filter(min_value=2.0, max_value=5.0),
         "D": Filter(allow_only=[True]),
     }
 

@@ -19,10 +19,7 @@ class Filter:
     disallow: Optional[List[Any]] = None
 
 
-def _is_excluded_by_filter(
-    db: pd.DataFrame, colname: database.Colname, filter_: Filter
-) -> pd.Series:
-    values = db[colname]
+def _is_excluded_by_filter(values: pd.Series, filter_: Filter) -> pd.Series:
     exclusion_criteria = []
 
     if filter_.disallow is not None:
@@ -41,13 +38,15 @@ def _is_excluded_by_filter(
 def filter_db(
     db: pd.DataFrame, filters: Mapping[database.Colname, Filter]
 ) -> pd.DataFrame:
+    db.reset_index(inplace=True)
     exclusion_votes = pd.DataFrame(
         {
-            colname: _is_excluded_by_filter(db, colname, filter_)
+            colname: _is_excluded_by_filter(db[colname], filter_)
             for colname, filter_ in filters.items()
         }
     )
-    return db[~exclusion_votes.any(axis=1)]
+    db.set_index(database.TIMESTAMP_COLUMN, inplace=True)
+    return db[~exclusion_votes.any(axis=1).values]
 
 
 def iter_measurements(
