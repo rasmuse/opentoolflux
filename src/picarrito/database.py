@@ -10,7 +10,6 @@ from typing import Iterable, Iterator, Literal, Mapping, Sequence, Union
 import pandas as pd
 
 TIMESTAMP_COLUMN = "__TIMESTAMP__"
-EXCLUDE_COLUMN = "__EXCLUDE__"
 MICROSECONDS_PER_SECOND = 1e6
 MICROSECOND_NUMPY_TIMESTAMP = "datetime64[us]"
 
@@ -53,8 +52,6 @@ def read_src_file(
 
     Rename the index to `{TIMESTAMP_COLUMN}`.
 
-    Add a boolean column `{EXCLUDE_COLUMN}` indicating exclusion status (default False).
-
     Return data sorted by the index col ascending.
     """
     columns = list(dtypes)
@@ -94,7 +91,6 @@ def _dataframe_to_db(data: pd.DataFrame, timestamp_col: Colname) -> pd.DataFrame
     if not data.index.is_unique:
         first_duplicate = data.index[data.index.duplicated()][0]
         raise ValueError(f"Duplicate timestamp {first_duplicate}")
-    data[EXCLUDE_COLUMN] = False
     return data
 
 
