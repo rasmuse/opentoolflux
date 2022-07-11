@@ -15,7 +15,8 @@ from . import analyze, database, logging_config
 logger = logging.getLogger(__name__)
 
 _DEFAULT_CONFIG_PATH = Path("picarrito.toml")
-_DEFAULT_DB_PATH = Path("picarrito_db.feather")
+_DEFAULT_OUTDIR = Path("picarrito")
+_DB_FILENAME = "database.feather"
 
 
 @click.group()
@@ -31,10 +32,10 @@ def main(ctx: click.Context, config_path: Path):
     conf = Config.from_toml(config_path)
     ctx.obj["config"] = conf
 
-    logging_config.setup_logging(conf.logging)
-
     work_dir = config_path.parent
     os.chdir(work_dir)
+
+    logging_config.setup_logging(conf.logging, conf.general.outdir)
 
 
 @main.command(name="import")
@@ -65,7 +66,7 @@ def info(ctx: click.Context):
 
 
 def _iter_measurements(conf: Config):
-    db = database.read_db(conf.general.db_path)
+    db = database.read_db(conf.general.outdir / _DB_FILENAME)
     db = analyze.filter_db(db, conf.filters)
     yield from analyze.iter_measurements(
         db,
@@ -77,7 +78,7 @@ def _iter_measurements(conf: Config):
 
 
 class General(pydantic.BaseModel):
-    db_path: Path = _DEFAULT_DB_PATH
+    outdir: Path = _DEFAULT_OUTDIR
 
 
 class Import(pydantic.BaseModel):
