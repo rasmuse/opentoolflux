@@ -46,21 +46,39 @@ def main(ctx: click.Context, config_path: Path):
 @click.pass_context
 def import_(ctx: click.Context):
     conf: Config = ctx.obj["config"]
+    db_path = _get_db_path(conf)
+
+    try:
+        db = database.read_db(db_path)
+    except FileNotFoundError:
+        logger.info(f"No existing database at '{db_path}'.")
+        db = database.create_empty_db(conf.import_.columns, conf.import_.timestamp_col)
+
     new_data = database.read_src_files(
         conf.import_.src,
         conf.import_.columns,
         conf.import_.timestamp_col,
         conf.import_.sep,
     )
-    db_path = _get_db_path(conf)
-    try:
-        old_db = database.read_db(db_path)
-        updated_db = database.update(old_db, new_data)
-    except FileNotFoundError:
-        updated_db = new_data
 
-    database.save_db(updated_db, db_path)
-    logger.info(f"Saved database to '{db_path}'.")
+    summary_rows = {
+        "Before": _build_db_summary_row(db),
+        "New data": _build_db_summary_row(new_data),
+    }
+
+    db = database.update(db, new_data)
+
+    summary_rows["After"] = _build_db_summary_row(db)
+    logger.info(f"Database updated:\n{pd.DataFrame(summary_rows).T}")
+
+    database.save_db(db, db_path)
+
+
+def _build_db_summary_row(db: pd.DataFrame):
+    return {
+        "Size in memory (MB)": f"{(db.memory_usage().sum() / (1024 * 1024)):.1f}",
+        "Rows": f"{len(db):,}",
+    }
 
 
 @main.command()

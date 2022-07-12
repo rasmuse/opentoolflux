@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import functools
 import glob
 import itertools
+import logging
 from io import StringIO
 from pathlib import Path
-from typing import Iterable, Iterator, Literal, Mapping, Sequence, Union
+from typing import Iterator, Literal, Mapping, Union
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 TIMESTAMP_COLUMN = "__TIMESTAMP__"
 MICROSECONDS_PER_SECOND = 1e6
@@ -54,6 +56,7 @@ def read_src_file(
 
     Return data sorted by the index col ascending.
     """
+    logger.debug(f"Reading '{path_or_buffer}'.")
     columns = list(dtypes)
     data = pd.read_csv(path_or_buffer, sep=sep, dtype=dtypes, usecols=columns)
     return _dataframe_to_db(data, timestamp_col)
@@ -65,9 +68,11 @@ def read_src_files(
     timestamp_col: Colname,
     sep: str,
 ) -> pd.DataFrame:
-    paths = sorted(_find_files(glob_patterns))
+    paths = sorted(set(_find_files(glob_patterns)))
     datasets = (read_src_file(path, dtypes, timestamp_col, sep) for path in paths)
-    return update(create_empty_db(dtypes, timestamp_col), *datasets)
+    result = update(create_empty_db(dtypes, timestamp_col), *datasets)
+    logger.info(f"Read {len(result):,} lines from {len(paths):,} files.")
+    return result
 
 
 def _find_files(glob_patterns: list[str]) -> Iterator[Path]:
@@ -138,8 +143,14 @@ def update(original: pd.DataFrame, *databases: pd.DataFrame) -> pd.DataFrame:
 
 
 def read_db(path: Path) -> pd.DataFrame:
+    logger.info(f"Reading database from '{path}' ({_get_file_size_MiB(path):.1f} MiB).")
     return pd.read_feather(path).set_index(TIMESTAMP_COLUMN)
 
 
 def save_db(db: pd.DataFrame, path: Path):
     db.reset_index().to_feather(path)
+    logger.info(f"Saved database to '{path}' ({_get_file_size_MiB(path):.1f} MiB).")
+
+
+def _get_file_size_MiB(path: Path):
+    return path.stat().st_size / (1024 * 1024)
