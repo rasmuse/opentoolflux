@@ -4,11 +4,14 @@ import datetime
 import logging
 import os
 from pathlib import Path
-from typing import List, Mapping
+from typing import Iterable, List, Mapping, Optional
 
 import click
+import pandas as pd
 import pydantic
 import toml
+
+from picarrito.fluxes import estimate_vol_flux
 
 from . import database, logging_config, measurements
 
@@ -17,6 +20,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_CONFIG_PATH = Path("picarrito.toml")
 _DEFAULT_OUTDIR = Path("picarrito")
 _DB_FILENAME = "database.feather"
+_FLUXES_FILENAME = "fluxes.csv"
 
 
 @click.group()
@@ -48,13 +52,15 @@ def import_(ctx: click.Context):
         conf.import_.timestamp_col,
         conf.import_.sep,
     )
+    db_path = _get_db_path(conf)
     try:
-        old_db = database.read_db(conf.general.db_path)
+        old_db = database.read_db(db_path)
         updated_db = database.update(old_db, new_data)
     except FileNotFoundError:
         updated_db = new_data
 
-    database.save_db(updated_db, conf.general.db_path)
+    database.save_db(updated_db, db_path)
+    logger.info(f"Saved database to '{db_path}'.")
 
 
 @main.command()
@@ -65,8 +71,77 @@ def info(ctx: click.Context):
         pass
 
 
+@main.command()
+@click.pass_context
+def fluxes(ctx: click.Context):
+    conf: Config = ctx.obj["config"]
+    result = _estimate_fluxes_result_table(_iter_measurements(conf), conf)
+    fluxes_path = conf.general.outdir / _FLUXES_FILENAME
+    result.to_csv(
+        fluxes_path,
+        index=False,
+    )
+    logger.info(f"Saved fluxes to '{fluxes_path}'.")
+
+
+def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Config):
+    def build_row(measurement: pd.DataFrame, gas: database.Colname):
+        row = estimate_vol_flux(
+            measurement[gas],
+            t0_delay=conf.fluxes.t0_delay,
+            t0_margin=conf.fluxes.t0_margin,
+            tau_s=conf.fluxes.tau_s,
+            h=conf.fluxes.h,
+        )
+        row["molar_flux"] = row["vol_flux"] * conf.fluxes.vol_to_molar_factor
+        (row["chamber"],) = measurement[conf.measurements.chamber_col].unique()
+        row["gas"] = gas
+
+        return row
+
+    result_table = pd.DataFrame.from_records(
+        [
+            build_row(measurement, gas)
+            for measurement in measurements
+            for gas in conf.fluxes.gases
+        ]
+    )
+
+    result_table["chamber_label"] = _get_chamber_labels(result_table["chamber"], conf)
+
+    result_table = result_table[_FLUXES_COLUMNS_ORDER]
+
+    logger.info(
+        f"Estimated {len(result_table)} fluxes ({', '.join(conf.fluxes.gases)}) "
+        f"in {result_table['t0'].nunique()} measurements."
+    )
+
+    return result_table
+
+
+def _get_chamber_labels(chambers: pd.Series, conf: Config):
+    if conf.chamber_labels is None:
+        return chambers.astype(str)
+    else:
+        replacements = pd.Series(conf.chamber_labels)
+        replacements.index = replacements.index.values.astype(chambers.dtype)
+        return chambers.replace(replacements)
+
+
+_FLUXES_COLUMNS_ORDER = [
+    "data_start",
+    "t0",
+    "chamber",
+    "chamber_label",
+    "gas",
+    "c0",
+    "vol_flux",
+    "molar_flux",
+]
+
+
 def _iter_measurements(conf: Config):
-    db = database.read_db(conf.general.outdir / _DB_FILENAME)
+    db = database.read_db(_get_db_path(conf))
     db = measurements.filter_db(db, conf.filters)
     yield from measurements.iter_measurements(
         db,
@@ -75,6 +150,10 @@ def _iter_measurements(conf: Config):
         conf.measurements.min_duration,
         conf.measurements.max_duration,
     )
+
+
+def _get_db_path(conf: Config) -> Path:
+    return conf.general.outdir / _DB_FILENAME
 
 
 class General(pydantic.BaseModel):
@@ -95,13 +174,40 @@ class Measurements(pydantic.BaseModel):
     max_duration: datetime.timedelta
 
 
+class Fluxes(pydantic.BaseModel):
+    gases: List[str]
+    t0_delay: datetime.timedelta
+    t0_margin: datetime.timedelta
+    A: float
+    Q: float
+    V: float
+    P: float = float("nan")
+    T: float = float("nan")
+    gas_constant: float = 8.31447
+
+    @property
+    def tau_s(self) -> float:
+        return self.V / self.Q
+
+    @property
+    def h(self) -> float:
+        return self.V / self.A
+
+    @property
+    def vol_to_molar_factor(self) -> float:
+        # PV = nRT <=> n = PV / RT
+        return self.P / (self.gas_constant * self.T)
+
+
 class Config(pydantic.BaseModel):
-    general: General
+    general: General = pydantic.Field(default_factory=General)
     import_: Import = pydantic.Field(alias="import")
     filters: Mapping[database.Colname, measurements.Filter] = pydantic.Field(
         default_factory=dict
     )
     measurements: Measurements
+    chamber_labels: Optional[Mapping[str, str]] = None
+    fluxes: Fluxes
     logging: Mapping = logging_config.DEFAULT_LOG_SETTINGS
 
     @classmethod
