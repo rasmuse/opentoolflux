@@ -21,7 +21,8 @@ def test_recover_flux():
     concentrations = c0 + F * tau_s / h * (1 - np.exp(-elapsed_s / tau_s))
     concentrations[is_before_t0] = c0 * 1000  # what happens before t0 is irrelevant
     measurement = pd.Series(
-        data=concentrations, index=(times_s * 1e3).astype("datetime64[ms]")
+        data=concentrations,
+        index=(times_s * 1e3).astype("datetime64[ms]"),  # type: ignore
     )
 
     # With t0_delay and tau correctly specified; should work perfectly

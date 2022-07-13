@@ -4,7 +4,7 @@ import datetime
 import logging
 import os
 from pathlib import Path
-from typing import Iterable, List, Mapping, Union
+from typing import Any, Dict, Iterable, List, Mapping, Union, overload
 
 import click
 import matplotlib.pyplot as plt
@@ -153,9 +153,21 @@ def flux_fits(ctx: click.Context):
             plt.close(fig)
 
 
+@overload
 def _get_chamber_label(
-    chamber_value: Union[pd.Series, int, float, bool], chamber_labels: ChamberLabels
+    chamber_value: pd.Series, chamber_labels: ChamberLabels
+) -> pd.Series:
+    ...
+
+
+@overload
+def _get_chamber_label(
+    chamber_value: Union[int, float, bool, str], chamber_labels: ChamberLabels
 ) -> str:
+    ...
+
+
+def _get_chamber_label(chamber_value, chamber_labels):
     type_ = (
         chamber_value.dtype
         if isinstance(chamber_value, pd.Series)
@@ -178,18 +190,24 @@ def _build_measurement_file_name(measurement: pd.DataFrame, conf: Config, suffix
 
 def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Config):
     def build_row(measurement: pd.DataFrame, gas: database.Colname):
-        row = estimate_vol_flux(
+        flux_est = estimate_vol_flux(
             measurement[gas],
             t0_delay=conf.fluxes.t0_delay,
             t0_margin=conf.fluxes.t0_margin,
             tau_s=conf.fluxes.tau_s,
             h=conf.fluxes.h,
         )
-        row["molar_flux"] = row["vol_flux"] * conf.fluxes.vol_to_molar_factor
-        (row["chamber"],) = measurement[conf.measurements.chamber_col].unique()
-        row["gas"] = gas
 
-        return row
+        (chamber,) = measurement[conf.measurements.chamber_col].unique()
+
+        result_row = {
+            **flux_est,
+            "molar_flux": flux_est["vol_flux"] * conf.fluxes.vol_to_molar_factor,
+            "chamber": chamber,
+            "gas": gas,
+        }
+
+        return result_row
 
     # The click.progressbar(list(measurements), ...) makes a full list
     # of all measurements, which increases memory consumption compared the iterator,
@@ -304,7 +322,7 @@ class Config(pydantic.BaseModel):
     measurements: Measurements
     chamber_labels: ChamberLabels = pydantic.Field(default_factory=dict)
     fluxes: Fluxes
-    logging: Mapping = logging_config.DEFAULT_LOG_SETTINGS
+    logging: Dict[str, Any] = logging_config.DEFAULT_LOG_SETTINGS
 
     @classmethod
     def from_toml(cls, path: Path) -> Config:

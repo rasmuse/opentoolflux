@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, TypedDict, Union
 
 import numpy as np
 import numpy.linalg
@@ -11,38 +11,53 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
+class VolFluxEstimate(TypedDict):
+    data_start: datetime.datetime
+    t0: datetime.datetime
+    tau_s: float
+    h: float
+    fit_start: datetime.datetime
+    fit_end: datetime.datetime
+    c0: float
+    vol_flux: float
+
+
 def estimate_vol_flux(
     measurement: pd.Series,
     t0_delay: datetime.timedelta,
     t0_margin: datetime.timedelta,
     tau_s: float,
     h: float,
-):
+) -> VolFluxEstimate:
+    assert isinstance(measurement.index, pd.DatetimeIndex)
     data_start = measurement.index[0]
+    assert isinstance(data_start, datetime.datetime)
     t0 = data_start + t0_delay
-    data_analyze = measurement[measurement.index >= data_start + t0_delay + t0_margin]
-    elapsed_seconds = (data_analyze.index - t0).total_seconds()
+    data_analyze = measurement[
+        measurement.index >= data_start + t0_delay + t0_margin  # type: ignore
+    ]
+    assert isinstance(data_analyze.index, pd.DatetimeIndex)
+    elapsed_seconds = (data_analyze.index - t0).total_seconds()  # type: ignore
     concentrations = data_analyze.values
+    assert isinstance(concentrations, np.ndarray)
     c0, vol_flux = _calculate_vol_flux_from_cleaned_data(
         elapsed_seconds, concentrations, tau_s, h
     )
-    return pd.Series(
-        dict(
-            data_start=data_start,
-            t0=t0,
-            tau_s=tau_s,
-            h=h,
-            fit_start=data_analyze.index[0],
-            fit_end=data_analyze.index[-1],
-            c0=c0,
-            vol_flux=vol_flux,
-        )
-    )
+    return {
+        "data_start": data_start,
+        "t0": t0,
+        "tau_s": tau_s,
+        "h": h,
+        "fit_start": data_analyze.index[0],
+        "fit_end": data_analyze.index[-1],
+        "c0": c0,
+        "vol_flux": vol_flux,
+    }
 
 
 def predict_concentration(
-    vol_flux_estimate: Mapping[str, Any], times: Union[np.array, pd.DatetimeIndex]
-) -> np.array:
+    vol_flux_estimate: Mapping[str, Any], times: Union[np.ndarray, pd.DatetimeIndex]
+) -> np.ndarray:
     elapsed_s = (times - vol_flux_estimate["t0"]).total_seconds()
     c0 = vol_flux_estimate["c0"]
     vol_flux = vol_flux_estimate["vol_flux"]
@@ -52,8 +67,8 @@ def predict_concentration(
 
 
 def _calculate_vol_flux_from_cleaned_data(
-    elapsed: np.array, concentrations: np.array, tau: float, h: float
-) -> float:
+    elapsed: np.ndarray, concentrations: np.ndarray, tau: float, h: float
+) -> tuple[float, float]:
     # The differential equation solution is
     # c(t) == c(0) + F * (tau/h) * (1 - exp(-elapsed/tau))
     #
