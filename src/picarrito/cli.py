@@ -132,13 +132,21 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
 
         return row
 
-    result_table = pd.DataFrame.from_records(
-        [
-            build_row(measurement, gas)
-            for measurement in measurements
-            for gas in conf.fluxes.gases
-        ]
-    )
+    # The click.progressbar(list(measurements), ...) makes a full list
+    # of all measurements, which increases memory consumption compared the iterator,
+    # for the purpose of being able to know the progress.
+    # However, this is only one of several places in the source code that
+    # requires 2x full database in memory.
+    with click.progressbar(
+        list(measurements), label="Analyzing measurements", show_pos=True
+    ) as measurements:
+        result_table = pd.DataFrame.from_records(
+            [
+                build_row(measurement, gas)
+                for measurement in measurements
+                for gas in conf.fluxes.gases
+            ]
+        )
 
     result_table["chamber_label"] = _get_chamber_labels(result_table["chamber"], conf)
 
