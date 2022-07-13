@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 _DEFAULT_CONFIG_PATH = Path("picarrito.toml")
 _DEFAULT_OUTDIR = Path("picarrito")
 _DB_FILENAME = "database.feather"
+_PLOTS_SUBDIR = "plots"
 _FLUXES_FILENAME = "fluxes.csv"
 
 
@@ -130,27 +131,31 @@ def plot(ctx: click.Context):
 def flux_fits(ctx: click.Context):
     conf: Config = ctx.obj["config"]
     measurements = list(_iter_measurements(conf))
-    plot_dir = conf.general.outdir / "plots" / "flux-fits"
+    plot_dir = conf.general.outdir / _PLOTS_SUBDIR / "flux-fits"
     plot_dir.mkdir(parents=True, exist_ok=True)
     with click.progressbar(
         measurements, label="Plotting measurements", show_pos=True
     ) as measurements:
         for m in measurements:
-            flux_estimates_by_gas = {
-                gas: estimate_vol_flux(
-                    m[gas],
-                    t0_delay=conf.fluxes.t0_delay,
-                    t0_margin=conf.fluxes.t0_margin,
-                    tau_s=conf.fluxes.tau_s,
-                    h=conf.fluxes.h,
-                )
-                for gas in conf.fluxes.gases
-            }
+            _plot_flux_fit(m, plot_dir, conf)
 
-            fig = plot_measurement(m, conf.fluxes.gases, flux_estimates_by_gas)
-            plot_path = plot_dir / _build_measurement_file_name(m, conf, ".png")
-            fig.savefig(plot_path)
-            plt.close(fig)
+
+def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
+    flux_estimates_by_gas = {
+        gas: estimate_vol_flux(
+            measurement[gas],
+            t0_delay=conf.fluxes.t0_delay,
+            t0_margin=conf.fluxes.t0_margin,
+            tau_s=conf.fluxes.tau_s,
+            h=conf.fluxes.h,
+        )
+        for gas in conf.fluxes.gases
+    }
+
+    fig = plot_measurement(measurement, conf.fluxes.gases, flux_estimates_by_gas)
+    plot_path = dst_dir / _build_measurement_file_name(measurement, conf, ".png")
+    fig.savefig(plot_path)
+    plt.close(fig)
 
 
 @overload
@@ -198,12 +203,13 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
             h=conf.fluxes.h,
         )
 
-        (chamber,) = measurement[conf.measurements.chamber_col].unique()
+        (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
 
         result_row = {
             **flux_est,
-            "molar_flux": flux_est["vol_flux"] * conf.fluxes.vol_to_molar_factor,
-            "chamber": chamber,
+            "molar_flux": flux_est["vol_flux"] * conf.fluxes.factor_vol_to_molar,
+            "chamber_value": chamber_value,
+            "chamber_label": _get_chamber_label(chamber_value, conf.chamber_labels),
             "gas": gas,
         }
 
@@ -224,10 +230,6 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
                 for gas in conf.fluxes.gases
             ]
         )
-
-    result_table["chamber_label"] = _get_chamber_label(
-        result_table["chamber"], conf.chamber_labels
-    )
 
     result_table = result_table[_FLUXES_COLUMNS_ORDER]
 
@@ -308,7 +310,7 @@ class Fluxes(pydantic.BaseModel):
         return self.V / self.A
 
     @property
-    def vol_to_molar_factor(self) -> float:
+    def factor_vol_to_molar(self) -> float:
         # PV = nRT <=> n = PV / RT
         return self.P / (self.gas_constant * self.T)
 
