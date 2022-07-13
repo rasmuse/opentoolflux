@@ -7,6 +7,7 @@ import operator
 from dataclasses import dataclass
 from typing import Any, Iterator, List, Mapping, Optional
 
+import numpy as np
 import pandas as pd
 
 from . import database
@@ -97,9 +98,26 @@ def iter_measurements(
         measurement_metas.append(pd.Series(dict(duration=duration, accept=accept)))
 
         if accept:
-            yield measurement
+            yield _ensure_float64_floats(measurement)
 
     logger.info(f"\n{_get_measurements_summary(measurement_metas)}\n")
+
+
+def _ensure_float64_floats(df: pd.DataFrame) -> pd.DataFrame:
+    def replace_float_by_float64(dtype):
+        if (
+            (isinstance(dtype, str) and dtype.startswith("float"))
+            or (isinstance(dtype, np.dtype) and dtype.kind == "f")
+            or (dtype is float)
+        ):
+            return np.float64
+        return dtype
+
+    new_dtypes = {
+        key: replace_float_by_float64(value) for key, value in df.dtypes.items()
+    }
+
+    return df.astype(new_dtypes)  # type: ignore
 
 
 def _get_measurements_summary(metas: List[pd.Series]) -> str:
