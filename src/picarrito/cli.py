@@ -244,7 +244,7 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
 _FLUXES_COLUMNS_ORDER = [
     "data_start",
     "t0",
-    "chamber",
+    "chamber_value",
     "chamber_label",
     "gas",
     "c0",
