@@ -4,14 +4,16 @@ import datetime
 import logging
 import os
 from pathlib import Path
-from typing import Iterable, List, Mapping, Optional
+from typing import Iterable, List, Mapping, Union
 
 import click
+import matplotlib.pyplot as plt
 import pandas as pd
 import pydantic
 import toml
 
 from picarrito.fluxes import estimate_vol_flux
+from picarrito.plot import plot_measurement
 
 from . import database, logging_config, measurements
 
@@ -117,6 +119,63 @@ def fluxes(ctx: click.Context):
     logger.info(f"Saved fluxes to '{fluxes_path}'.")
 
 
+@main.group()
+@click.pass_context
+def plot(ctx: click.Context):
+    pass
+
+
+@plot.command()
+@click.pass_context
+def flux_fits(ctx: click.Context):
+    conf: Config = ctx.obj["config"]
+    measurements = list(_iter_measurements(conf))
+    plot_dir = conf.general.outdir / "plots" / "flux-fits"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+    with click.progressbar(
+        measurements, label="Plotting measurements", show_pos=True
+    ) as measurements:
+        for m in measurements:
+            flux_estimates_by_gas = {
+                gas: estimate_vol_flux(
+                    m[gas],
+                    t0_delay=conf.fluxes.t0_delay,
+                    t0_margin=conf.fluxes.t0_margin,
+                    tau_s=conf.fluxes.tau_s,
+                    h=conf.fluxes.h,
+                )
+                for gas in conf.fluxes.gases
+            }
+
+            fig = plot_measurement(m, conf.fluxes.gases, flux_estimates_by_gas)
+            plot_path = plot_dir / _build_measurement_file_name(m, conf, ".png")
+            fig.savefig(plot_path)
+            plt.close(fig)
+
+
+def _get_chamber_label(
+    chamber_value: Union[pd.Series, int, float, bool], chamber_labels: ChamberLabels
+) -> str:
+    type_ = (
+        chamber_value.dtype
+        if isinstance(chamber_value, pd.Series)
+        else type(chamber_value)
+    )
+    replacements = pd.Series(chamber_labels)
+    replacements.index = replacements.index.astype(type_)
+    if isinstance(chamber_value, pd.Series):
+        return chamber_value.replace(replacements).astype(str)
+    else:
+        return replacements[chamber_value]
+
+
+def _build_measurement_file_name(measurement: pd.DataFrame, conf: Config, suffix: str):
+    (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
+    chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
+    data_start = measurement.index[0]
+    return f"{chamber_label}-{data_start:%Y%m%d-%H%M%S}{suffix}"
+
+
 def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Config):
     def build_row(measurement: pd.DataFrame, gas: database.Colname):
         row = estimate_vol_flux(
@@ -148,7 +207,9 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
             ]
         )
 
-    result_table["chamber_label"] = _get_chamber_labels(result_table["chamber"], conf)
+    result_table["chamber_label"] = _get_chamber_label(
+        result_table["chamber"], conf.chamber_labels
+    )
 
     result_table = result_table[_FLUXES_COLUMNS_ORDER]
 
@@ -158,15 +219,6 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
     )
 
     return result_table
-
-
-def _get_chamber_labels(chambers: pd.Series, conf: Config):
-    if conf.chamber_labels is None:
-        return chambers.astype(str)
-    else:
-        replacements = pd.Series(conf.chamber_labels)
-        replacements.index = replacements.index.values.astype(chambers.dtype)
-        return chambers.replace(replacements)
 
 
 _FLUXES_COLUMNS_ORDER = [
@@ -215,6 +267,9 @@ class Measurements(pydantic.BaseModel):
     max_duration: datetime.timedelta
 
 
+ChamberLabels = Mapping[str, str]
+
+
 class Fluxes(pydantic.BaseModel):
     gases: List[str]
     t0_delay: datetime.timedelta
@@ -247,7 +302,7 @@ class Config(pydantic.BaseModel):
         default_factory=dict
     )
     measurements: Measurements
-    chamber_labels: Optional[Mapping[str, str]] = None
+    chamber_labels: ChamberLabels = pydantic.Field(default_factory=dict)
     fluxes: Fluxes
     logging: Mapping = logging_config.DEFAULT_LOG_SETTINGS
 

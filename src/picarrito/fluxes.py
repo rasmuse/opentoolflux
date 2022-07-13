@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import logging
+from typing import Any, Mapping
 
 import numpy as np
 import numpy.linalg
@@ -29,10 +30,25 @@ def estimate_vol_flux(
         dict(
             data_start=data_start,
             t0=t0,
+            tau_s=tau_s,
+            h=h,
+            fit_start=data_analyze.index[0],
+            fit_end=data_analyze.index[-1],
             c0=c0,
             vol_flux=vol_flux,
         )
     )
+
+
+def predict_concentration(
+    vol_flux_estimate: Mapping[str, Any], times: Union[np.array, pd.DatetimeIndex]
+) -> np.array:
+    elapsed_s = (times - vol_flux_estimate["t0"]).total_seconds()
+    c0 = vol_flux_estimate["c0"]
+    vol_flux = vol_flux_estimate["vol_flux"]
+    tau_s = vol_flux_estimate["tau_s"]
+    h = vol_flux_estimate["h"]
+    return c0 + vol_flux * tau_s / h * (1 - np.exp(-elapsed_s / tau_s))
 
 
 def _calculate_vol_flux_from_cleaned_data(
