@@ -54,7 +54,7 @@ def import_(ctx: click.Context):
         logger.info(f"No existing database at '{db_path}'.")
         db = database.create_empty_db(conf.import_.columns, conf.import_.timestamp_col)
 
-    new_data = database.read_src_files(
+    new_data = _read_src_files(
         conf.import_.src,
         conf.import_.columns,
         conf.import_.timestamp_col,
@@ -72,6 +72,21 @@ def import_(ctx: click.Context):
     logger.info(f"Database updated:\n{pd.DataFrame(summary_rows).T}")
 
     database.save_db(db, db_path)
+
+
+def _read_src_files(
+    glob_patterns: List[str],
+    dtypes: database.DTypes,
+    timestamp_col: database.Colname,
+    sep: str,
+) -> pd.DataFrame:
+    paths = database.find_files(glob_patterns)
+    with click.progressbar(paths, label="Reading source files", show_pos=True) as paths:
+        datasets = [
+            database.read_src_file(path, dtypes, timestamp_col, sep) for path in paths
+        ]
+    result = database.update(database.create_empty_db(dtypes, timestamp_col), *datasets)
+    return result
 
 
 def _build_db_summary_row(db: pd.DataFrame):

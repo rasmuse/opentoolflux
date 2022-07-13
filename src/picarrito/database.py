@@ -5,7 +5,7 @@ import itertools
 import logging
 from io import StringIO
 from pathlib import Path
-from typing import Iterator, Literal, Mapping, Union
+from typing import List, Literal, Mapping, Union
 
 import pandas as pd
 
@@ -62,25 +62,16 @@ def read_src_file(
     return _dataframe_to_db(data, timestamp_col)
 
 
-def read_src_files(
-    glob_patterns: list[str],
-    dtypes: DTypes,
-    timestamp_col: Colname,
-    sep: str,
-) -> pd.DataFrame:
-    paths = sorted(set(_find_files(glob_patterns)))
-    datasets = (read_src_file(path, dtypes, timestamp_col, sep) for path in paths)
-    result = update(create_empty_db(dtypes, timestamp_col), *datasets)
-    logger.info(f"Read {len(result):,} lines from {len(paths):,} files.")
-    return result
-
-
-def _find_files(glob_patterns: list[str]) -> Iterator[Path]:
-    return map(
-        Path,
-        itertools.chain(
-            *(glob.iglob(pattern, recursive=True) for pattern in glob_patterns)
-        ),
+def find_files(glob_patterns: list[str]) -> List[Path]:
+    return sorted(
+        set(
+            map(
+                Path,
+                itertools.chain(
+                    *(glob.iglob(pattern, recursive=True) for pattern in glob_patterns)
+                ),
+            )
+        )
     )
 
 
