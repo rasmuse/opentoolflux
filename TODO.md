@@ -1,6 +1,22 @@
 # Todo
 
+- Adjust verbosity to notice on screen by default
+- Add --log-level option
+- Make it `pip` installable
+- Add more plots
+- Add CONTRIBUTING instructions
+- Prepare a full example
+
+
+
+
+
+
+# Todo
+
 - Allow ISO8601 string timestamps (UTC) in input data
+- Use pd.to_timedelta() to convert config file input data
+- Use numpy.ndarray.astype() to convert filter settings
 - Possibly allow localized time in plot outputs
 
 # Functionality

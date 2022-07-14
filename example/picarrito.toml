@@ -1,0 +1,18 @@
+#Note that all other paths in the program are determined relative to the config file path
+
+
+### `picarrito import`
+
+#Imports data from source files into a database file. (See separate section "Source data file format").
+
+#Configuration:
+
+#- `src`: a list of [Unix-style glob patterns](https://en.wikipedia.org/wiki/Glob_(programming)) specifying the files to import. The pattern `"**"` matches zero or more directories, subdirectories and symbolic links to directories, for example as follows: `"directory/**/filename.dat"`. Relative paths are resolved relative to the configuration file.
+#- `timestamp_col`: The name of a column giving the timestamp of the measurements.
+#- `sep`: The delimiter that separates columns. Default: `"\\s+"`, which means one or more whitespace characters. Write `","` for csv files, etc.
+#- `columns`: Specifies the columns to import and their data types. Valid data types are:
+#  - int8, int16, int32, int64
+#  - uint8, uint16, uint32, uint64
+#  - float16, float32, float64
+#  - bool
+#  - str
