@@ -1,18 +1,45 @@
-#Note that all other paths in the program are determined relative to the config file path
+# The [import] section defines how to import data from source files.
+# Read more in the README about source data file formats.
 
+[import]
+# src: a list of glob patterns defining which files to import.
+# The search is relative to the directory containing the configuration file.
+# The pattern '**' means to recurse into zero or more nested directories.
+#
+# Read about globs here:  https://en.wikipedia.org/wiki/Glob_(programming)
+#
+# Files found by more than one glob pattern (such as the file under 2021/09/30
+# which in the example below will be found three times) will only be imported once.
+src = [
+    "indata/2021/**/*.dat",
+    "indata/2021/09/30/*.dat",
+    "indata/2021/09/30/JFAADS2179-20210930-022526-DataLog_User.dat",
+]
 
-### `picarrito import`
+# timestamp_col: The column in the source data files that defines the
+# timestamp of each sample.
+# Read more in the README section on timestamps.
+timestamp_col = "EPOCH_TIME"
 
-#Imports data from source files into a database file. (See separate section "Source data file format").
+# sep: The separator used in source data files. This is optional.
+# The default is sep = '\s+' which means one or more whitespace characters.
+# For csv files, use, e.g., sep = ","
+# sep = "," # for csv file
 
-#Configuration:
+# The [import.columns] section specifies the columns to import from source
+# files, and what data types to store them as.
+# Read more about data types in the README.
 
-#- `src`: a list of [Unix-style glob patterns](https://en.wikipedia.org/wiki/Glob_(programming)) specifying the files to import. The pattern `"**"` matches zero or more directories, subdirectories and symbolic links to directories, for example as follows: `"directory/**/filename.dat"`. Relative paths are resolved relative to the configuration file.
-#- `timestamp_col`: The name of a column giving the timestamp of the measurements.
-#- `sep`: The delimiter that separates columns. Default: `"\\s+"`, which means one or more whitespace characters. Write `","` for csv files, etc.
-#- `columns`: Specifies the columns to import and their data types. Valid data types are:
-#  - int8, int16, int32, int64
-#  - uint8, uint16, uint32, uint64
-#  - float16, float32, float64
-#  - bool
-#  - str
+[import.columns]
+EPOCH_TIME = "float64" # floating-point Unix timestamp indata must be float64
+# In our Picarro data files, solenoid_valves is a number specifying the current
+# closed chamber.
+# Normally, the numbers are integers, but specified with many zero decimals.
+# When the machine is switching from one chamber to the next, the number sometimes
+# is a non-integer number for 1-2 seconds. (See the example data files.)
+# For this reason, we read solenoid_valves as float16 type.
+solenoid_valves = "float16"
+ALARM_STATUS = "uint8" # uint8: integers 0-255
+CO2 = "float32" # float32 gives more than sufficient precision for gas concentrations
+N2O_dry = "float32"
+CH4_dry = "float32"

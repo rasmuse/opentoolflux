@@ -1,1 +1,3 @@
 *       text=auto
+# Preserve CRLF line breaks in Picarro data files
+example/**/*.dat text eol=crlf
