@@ -155,6 +155,8 @@ def flux_fits(ctx: click.Context):
 
 
 def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
+    if conf.measurements is None:
+        raise click.ClickException("The config file has no section [measurements].")
     if conf.fluxes is None:
         raise click.ClickException("The config file has no section [fluxes].")
     flux_estimates_by_gas = {
@@ -168,7 +170,11 @@ def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
         for gas in conf.fluxes.gases
     }
 
-    fig = plot_measurement(measurement, conf.fluxes.gases, flux_estimates_by_gas)
+    (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
+    chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
+    fig = plot_measurement(
+        measurement, conf.fluxes.gases, flux_estimates_by_gas, title=chamber_label
+    )
     plot_path = dst_dir / _build_measurement_file_name(measurement, conf, ".png")
     fig.savefig(plot_path)
     plt.close(fig)
