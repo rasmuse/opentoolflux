@@ -220,7 +220,14 @@ When running the [`picarrito import` command](#import-data-from-source-files), t
 
 # How the flux estimation works
 
+This section will explain
+- Assumptions about chambers, closure, no recirculation
+- Derivation and solution of differential equation
+- How to estimate flux using linear regression on transformed data
+- Complication caused by delay from chamber closure to arrival of gas; parameters `t0_delay` and `t0_margin`.
+- Sensitivity to parameter errors
+
 # Known limitations
-- No recirculation
+- Only supports setup with no recirculation
 - All the settings for measurements and fluxes are the same for all chambers
 - Temperature & pressure are constant
