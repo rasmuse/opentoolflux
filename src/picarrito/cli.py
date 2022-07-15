@@ -308,7 +308,7 @@ class General(pydantic.BaseModel):
 class Import(pydantic.BaseModel):
     src: List[str]
     timestamp_col: str
-    sep: str = r"\s"
+    sep: str = r"\s+"
     columns: Mapping[database.Colname, database.DTypeName]
 
     @pydantic.validator("columns")
