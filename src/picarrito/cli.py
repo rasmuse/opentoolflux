@@ -26,6 +26,16 @@ _PLOTS_SUBDIR = "plots"
 _FLUXES_FILENAME = "fluxes.csv"
 
 
+def nicely_repackage_config_problems(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (BadConfig, pydantic.ValidationError) as e:
+            raise click.ClickException(str(e)) from e
+
+    return wrapper
+
+
 @click.group()
 @click.pass_context
 @click.option(
@@ -34,6 +44,7 @@ _FLUXES_FILENAME = "fluxes.csv"
     type=click.Path(dir_okay=False, path_type=Path, exists=True),
     default=_DEFAULT_CONFIG_PATH,
 )
+@nicely_repackage_config_problems
 def main(ctx: click.Context, config_path: Path):
     ctx.ensure_object(dict)
     conf = Config.from_toml(config_path)
@@ -284,6 +295,10 @@ def _iter_measurements(conf: Config):
 
 def _get_db_path(conf: Config) -> Path:
     return conf.general.outdir / _DB_FILENAME
+
+
+class BadConfig(Exception):
+    pass
 
 
 class General(pydantic.BaseModel):
