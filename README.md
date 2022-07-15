@@ -169,7 +169,7 @@ For the `float` data types, the choice is not as obvious because there is a loss
 
 Therefore, for example, when we work with Picarro data on N2O concentrations in ppmv (roughly 0.3 ppmv N2O), a `float16` can encode the difference beteween 0.300 ppmv and 0.301 ppmv without problem (a difference of 1 ppbv). This precision is much better than the [second-to-second noise in the Picarro concentration data](#source-data-file-format). This example shows that for many purposes, using `float16` instead of `float64` for gas concentrations will practically make very little difference for results. (By the way, the Picarro software converts all gas concentrations to `float64` before doing the flux estimate calculation, so only the value stored in the database is limited by the `float16` encoding.)
 
-If in doubt about `float` data types, we suggest to use `float32` which has [at least 6 decimal digits of precision in the significand](https://en.wikipedia.org/wiki/Single-precision_floating-point_format#IEEE_754_standard:_binary32) and thus should be far more precise than practically speaking any gas analyzer out there.
+**If in doubt about `float` data types, we suggest to use `float32` which has [at least 6 decimal digits of precision in the significand](https://en.wikipedia.org/wiki/Single-precision_floating-point_format#IEEE_754_standard:_binary32) and thus should be far more precise than practically speaking any gas analyzer out there.**
 
 How much space can be saved by choosing smaller data types? As an example, consider a database with the following data columns:
 
@@ -184,7 +184,7 @@ With the larger data types, each row will take 64 + 2 * 64 + 3 * 64 = 384 bits =
 
 If we collect one data row per second during one year, the resulting database sizes will be either 601 or 1,925 megabytes (MiB). If your computer has less than 4 gigabytes of RAM memory, the program might get slow or even crash with the larger database, and in any case you might care about the difference in space on disk.
 
-This example also shows that if your dataset is perhaps only a few weeks long with frequency 1 second, or maybe one year with frequency 1 minute, the file will be 1-2 orders of magnitude smaller and there is not much point in worrying about database size.
+This example also shows that if your dataset is perhaps only a few weeks long with frequency 1 second, or maybe one year with frequency 1 minute, the database file will anyway be so small that there are probably very few reasons to worry about database size.
 
 A final related note is that floating-point data to be converted to timestamps in the `picarrito import` command should always be `float64`. The conversion of floating-point Unix timestamps (in seconds) is designed to preserve 6 decimal places (microseconds), something which requires `float64`. The `__TIMESTAMP__` column in the end is always encoded using 64 bits anyway, so there is no space to be saved by parsing the timestamp column as a `float32`. Failure to specify `float64` as data type for the timestamp column raises a helpful error message.
 
