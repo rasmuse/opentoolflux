@@ -4,7 +4,7 @@ import datetime
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Union, overload
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Union, overload
 
 import click
 import matplotlib.pyplot as plt
@@ -49,6 +49,9 @@ def main(ctx: click.Context, config_path: Path):
 @click.pass_context
 def import_(ctx: click.Context):
     conf: Config = ctx.obj["config"]
+    if conf.import_ is None:
+        raise click.ClickException("The config file has no section [import].")
+
     db_path = _get_db_path(conf)
 
     try:
@@ -141,6 +144,8 @@ def flux_fits(ctx: click.Context):
 
 
 def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
+    if conf.fluxes is None:
+        raise click.ClickException("The config file has no section [fluxes].")
     flux_estimates_by_gas = {
         gas: estimate_vol_flux(
             measurement[gas],
@@ -187,6 +192,8 @@ def _get_chamber_label(chamber_value, chamber_labels):
 
 
 def _build_measurement_file_name(measurement: pd.DataFrame, conf: Config, suffix: str):
+    if conf.measurements is None:
+        raise click.ClickException("The config file has no section [measurements].")
     (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
     chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
     data_start = measurement.index[0]
@@ -194,20 +201,28 @@ def _build_measurement_file_name(measurement: pd.DataFrame, conf: Config, suffix
 
 
 def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Config):
+    if conf.measurements is None:
+        raise click.ClickException("The config file has no section [measurements].")
+    if conf.fluxes is None:
+        raise click.ClickException("The config file has no section [fluxes].")
+
+    measurements_conf = conf.measurements
+    fluxes_conf = conf.fluxes
+
     def build_row(measurement: pd.DataFrame, gas: database.Colname):
         flux_est = estimate_vol_flux(
             measurement[gas],
-            t0_delay=conf.fluxes.t0_delay,
-            t0_margin=conf.fluxes.t0_margin,
-            tau_s=conf.fluxes.tau_s,
-            h=conf.fluxes.h,
+            t0_delay=fluxes_conf.t0_delay,
+            t0_margin=fluxes_conf.t0_margin,
+            tau_s=fluxes_conf.tau_s,
+            h=fluxes_conf.h,
         )
 
-        (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
+        (chamber_value,) = measurement[measurements_conf.chamber_col].unique()
 
         result_row = {
             **flux_est,
-            "molar_flux": flux_est["vol_flux"] * conf.fluxes.factor_vol_to_molar,
+            "molar_flux": flux_est["vol_flux"] * fluxes_conf.factor_vol_to_molar,
             "chamber_value": chamber_value,
             "chamber_label": _get_chamber_label(chamber_value, conf.chamber_labels),
             "gas": gas,
@@ -254,6 +269,8 @@ _FLUXES_COLUMNS_ORDER = [
 
 
 def _iter_measurements(conf: Config):
+    if conf.measurements is None:
+        raise click.ClickException("The config file has no section [measurements].")
     db = database.read_db(_get_db_path(conf))
     db = measurements.filter_db(db, conf.filters)
     yield from measurements.iter_measurements(
@@ -317,13 +334,13 @@ class Fluxes(pydantic.BaseModel):
 
 class Config(pydantic.BaseModel):
     general: General = pydantic.Field(default_factory=General)
-    import_: Import = pydantic.Field(alias="import")
+    import_: Optional[Import] = pydantic.Field(alias="import", default=None)
     filters: Mapping[database.Colname, measurements.Filter] = pydantic.Field(
         default_factory=dict
     )
-    measurements: Measurements
+    measurements: Optional[Measurements] = pydantic.Field(default=None)
     chamber_labels: ChamberLabels = pydantic.Field(default_factory=dict)
-    fluxes: Fluxes
+    fluxes: Optional[Fluxes] = pydantic.Field(default=None)
     logging: Dict[str, Any] = logging_config.DEFAULT_LOG_SETTINGS
 
     @classmethod
