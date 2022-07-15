@@ -103,6 +103,12 @@ def _convert_datetime(s: pd.Series) -> pd.Series:
         # (2) multiply by 10**6 (i.e., to microseconds)
         # (3) round to closest microsecond
         # (4) convert to int64
+        #
+        # For this reason, let's require that floating-point timestamps are float64.
+        if s.dtype != "float64":
+            raise ValueError(
+                f"floating-point timestamp data must be float64 (found {s.dtype})"
+            )
         return (
             s.astype("float64")
             .mul(MICROSECONDS_PER_SECOND)

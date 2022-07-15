@@ -311,6 +311,19 @@ class Import(pydantic.BaseModel):
     sep: str = r"\s"
     columns: Mapping[database.Colname, database.DTypeName]
 
+    @pydantic.validator("columns")
+    def timestamp_float_must_be_float64(cls, columns, values):
+        timestamp_col = values["timestamp_col"]
+        assert isinstance(timestamp_col, str)
+        if timestamp_col not in columns:
+            raise BadConfig(f"No data type given for timestamp_col '{timestamp_col}'.")
+        timestamp_dtype = columns[timestamp_col]
+        if timestamp_dtype.startswith("float") and timestamp_dtype != "float64":
+            raise BadConfig(
+                f"Floating-point timestamp_col '{timestamp_col}' must be float64."
+            )
+        return columns
+
 
 class Measurements(pydantic.BaseModel):
     chamber_col: str

@@ -248,6 +248,21 @@ source_parse_cases = [
         ),
         sep=",",
     ),
+    SourceParseCase(  # float timestamps must be float64
+        "\n".join(
+            [
+                "t",
+                "1.1",
+                "2.1",
+                "3.1",
+            ]
+        ),
+        {
+            "t": "float32",
+        },
+        "t",
+        ValueError,
+    ),
 ]
 
 

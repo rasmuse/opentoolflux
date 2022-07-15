@@ -174,9 +174,9 @@ If in doubt about `float` data types, we suggest to use `float32` which has [at 
 How much space can be saved by choosing smaller data types? As an example, consider a database with the following data columns:
 
 - Timestamp (always 64 bits in a Feather file)
-- Chamber number (uint8 or uint64)
-- Alarm status (int8 or int64)
-- Five gas concentrations: N2O, NO2, CH4, CO2, H2O (float16 or float64)
+- Chamber number (`uint8` or `uint64`)
+- Alarm status (`int8` or `int64`)
+- Five gas concentrations: N2O, NO2, CH4, CO2, H2O (`float16` or `float64`)
 
 With the smaller data types, each row will take 64 + 2 * 8 + 5 * 16 = 160 bits = 20 bytes.
 
@@ -185,6 +185,8 @@ With the larger data types, each row will take 64 + 2 * 64 + 3 * 64 = 384 bits =
 If we collect one data row per second during one year, the resulting database sizes will be either 601 or 1,925 megabytes (MiB). If your computer has less than 4 gigabytes of RAM memory, the program might get slow or even crash with the larger database, and in any case you might care about the difference in space on disk.
 
 This example also shows that if your dataset is perhaps only a few weeks long with frequency 1 second, or maybe one year with frequency 1 minute, the file will be 1-2 orders of magnitude smaller and there is not much point in worrying about database size.
+
+A final related note is that floating-point data to be converted to timestamps in the `picarrito import` command should always be `float64`. The conversion of floating-point Unix timestamps (in seconds) is designed to preserve 6 decimal places (microseconds), something which requires `float64`. The `__TIMESTAMP__` column in the end is always encoded using 64 bits anyway, so there is no space to be saved by parsing the timestamp column as a `float32`. Failure to specify `float64` as data type for the timestamp column raises a helpful error message.
 
 # Source data file format
 
