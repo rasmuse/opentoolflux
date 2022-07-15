@@ -39,7 +39,52 @@ EPOCH_TIME = "float64" # floating-point Unix timestamp indata must be float64
 # is a non-integer number for 1-2 seconds. (See the example data files.)
 # For this reason, we read solenoid_valves as float16 type.
 solenoid_valves = "float16"
-ALARM_STATUS = "uint8" # uint8: integers 0-255
+ALARM_STATUS = "int8" # uint8: integers 0-255
 CO2 = "float32" # float32 gives more than sufficient precision for gas concentrations
 N2O_dry = "float32"
 CH4_dry = "float32"
+
+
+# Note: All the values in filter specifications are type converted
+# using numpy.ndarray(value).astype(dtype).
+# In the case of __TIMESTAMP__, this is always stored as datetime64[ms]
+# which means that any numeric value will be interpreted as a Unix timestamp in ms.
+# A simple way to avoid any confusion is use ISO8601 strings (YYYY-MM-DD HH:mm:SS)
+# as in this example:
+[filters.__TIMESTAMP__]
+min_value = "2021-09-29 21:55:00" # arbitrary examples
+max_value = "2021-09-30 01:20:30" # arbitrary examples
+
+[filters.ALARM_STATUS]
+allow_only = [0, 4]
+disallow = []
+# min_value = 0
+# max_value = 7
+
+[measurements]
+chamber_col = "solenoid_valves" # The column that identifies the current chamber
+max_gap = 10 # 10 seconds
+# max_gap = "00:05:37" # 5 minutes 37 seconds
+min_duration = "00:19:30" # 19 minutes 30 seconds
+max_duration = "00:24:30" # 24 minutes 30 seconds
+
+[chamber_labels]
+7 = "Chamber A"
+8 = "Chamber B"
+9 = "Chamber C"
+10 = "Chamber D"
+11 = "Chamber E"
+12 = "Chamber F"
+13 = "Chamber G"
+14 = "Chamber H"
+
+# Important TODO: add notes on units
+[fluxes]
+gases = ["N2O_dry", "CH4_dry", "CO2"] # which gases (data columns) to analyze
+t0_delay = "00:06:10" # 6 minutes 10 seconds tube delay from chamber to gas analyzer
+t0_margin = "00:02:00" # 2 minutes extra margin in case t0_delay is underestimated
+A = 0.25  # m2
+Q = 4.16e-6  # 0.25 liters/minute in m3/s
+V = 50e-3  # 50 liters in m3
+P = 101325  # 1 atmosphere in Pa
+T = 293  # 20 degrees C in K
