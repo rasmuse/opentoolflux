@@ -13,7 +13,7 @@ import pydantic
 import toml
 
 from picarrito.fluxes import estimate_vol_flux
-from picarrito.plot import plot_measurement
+from picarrito.plot import plot_measurement, plot_time_series
 
 from . import database, logging_config, measurements
 
@@ -178,6 +178,25 @@ def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
     plot_path = dst_dir / _build_measurement_file_name(measurement, conf, ".png")
     fig.savefig(plot_path)
     plt.close(fig)
+
+
+@plot.command()
+@click.pass_context
+def flux_time_series(ctx: click.Context):
+    conf: Config = ctx.obj["config"]
+    if conf.fluxes is None:
+        raise click.ClickException("The config file has no section [fluxes].")
+    fluxes = _estimate_fluxes_result_table(_iter_measurements(conf), conf)
+    plot_dir = conf.general.outdir / _PLOTS_SUBDIR / "flux-time-series"
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
+    for chamber_value, chamber_data in fluxes.groupby("chamber_value"):
+        chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
+        title = f"Molar fluxes, chamber {chamber_label}"
+        plot_path = plot_dir / f"{chamber_label}.png"
+        fig = plot_time_series(chamber_data, conf.fluxes.gases, title=title)
+        fig.savefig(plot_path)
+        plt.close(fig)
 
 
 @overload

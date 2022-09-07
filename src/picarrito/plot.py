@@ -26,6 +26,7 @@ _SECONDS_PER_MINUTE = 60
 prop_cycle = mpl.rc_params()["axes.prop_cycle"]
 colors = prop_cycle.by_key()["color"]
 _MEASUREMENT_KWS = dict(color="k", lw=0, marker=".", markersize=2)
+_TIME_SERIES_KWS = dict(color="k", lw=0.5, ls="--", marker=".", markersize=5)
 _ESTIMATOR_COLOR = colors[1]
 
 
@@ -116,5 +117,53 @@ def plot_measurement(
     last_ax.set_xlabel(
         f"Time elapsed (minutes) since\n{measurement_start:%Y-%m-%d %H:%M:%S}"
     )
+
+    return fig
+
+
+def plot_time_series(
+    fluxes: pd.DataFrame,
+    gases: Sequence[database.Colname],
+    title: Optional[str] = None,
+) -> Figure:
+    fluxes = fluxes.set_index(["gas", "t0"])["molar_flux"].sort_index()
+
+    # Rough calculation of height depending on number of panels;
+    # nothing scientific at all and probably will break down for large numbers.
+    height_per_column = 1.7
+    height_extra = 1.3
+    height_total = height_per_column * len(gases) + height_extra
+    share_extra = height_extra / height_total
+    fig, axs = plt.subplots(
+        nrows=len(gases),
+        sharex=True,
+        gridspec_kw=dict(
+            top=1 - 0.4 * share_extra,
+            hspace=0.3,
+            bottom=0.6 * share_extra,
+        ),
+        figsize=(6.4, height_total),
+    )
+
+    fig.suptitle(title)
+
+    if len(gases) > 1:
+        ax_by_column = dict(zip(gases, axs))  # type: ignore
+    else:
+        ax_by_column = {gases[0]: axs}
+
+    for column in gases:
+        ax = ax_by_column[column]
+        ax.set_title(_subplot_title(column))
+        ax.set_ylabel("flux")
+
+        ax.plot(
+            fluxes.xs(column),
+            **_TIME_SERIES_KWS,
+        )
+
+    last_ax = ax_by_column[gases[-1]]
+    last_ax.set_xlabel(f"t0")
+    last_ax.tick_params("x", labelrotation=30)
 
     return fig
