@@ -7,7 +7,6 @@
 - Add CONTRIBUTING instructions for development
 - Prepare a full example (config and data)
 - Make `picarrito` installable using `pip`
-- Use the `tomli` TOML parser library instead of `toml`
 - Add notes on units of flux estimates
 - Add notes on dimensions of flux estimates (it's all volumetric)
 - Add friendly error message when trying to import data with columns/dtypes mismatch between existing database and config file

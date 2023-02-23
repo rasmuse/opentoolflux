@@ -10,7 +10,7 @@ import click
 import matplotlib.pyplot as plt
 import pandas as pd
 import pydantic
-import toml
+import tomli
 
 from picarrito.fluxes import estimate_vol_flux
 from picarrito.plot import plot_measurement, plot_time_series
@@ -389,6 +389,6 @@ class Config(pydantic.BaseModel):
     @classmethod
     def from_toml(cls, path: Path) -> Config:
         logger.debug(f"Reading config file {path}")
-        with open(path, "r") as f:
-            obj = toml.load(f)
+        with open(path, "rb") as f:
+            obj = tomli.load(f)
         return cls.parse_obj(obj)
