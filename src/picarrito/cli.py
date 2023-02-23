@@ -192,7 +192,7 @@ def flux_time_series(ctx: click.Context):
 
     for chamber_value, chamber_data in fluxes.groupby("chamber_value"):
         chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
-        title = f"Molar fluxes, chamber {chamber_label}"
+        title = f"Volumetric fluxes, chamber {chamber_label}"
         plot_path = plot_dir / f"{chamber_label}.png"
         fig = plot_time_series(chamber_data, conf.fluxes.gases, title=title)
         fig.savefig(plot_path)
@@ -258,7 +258,6 @@ def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Co
 
         result_row = {
             **flux_est,
-            "molar_flux": flux_est["vol_flux"] * fluxes_conf.factor_vol_to_molar,
             "chamber_value": chamber_value,
             "chamber_label": _get_chamber_label(chamber_value, conf.chamber_labels),
             "gas": gas,
@@ -300,7 +299,6 @@ _FLUXES_COLUMNS_ORDER = [
     "gas",
     "c0",
     "vol_flux",
-    "molar_flux",
 ]
 
 
@@ -367,9 +365,6 @@ class Fluxes(pydantic.BaseModel):
     A: float
     Q: float
     V: float
-    P: float = float("nan")
-    T: float = float("nan")
-    gas_constant: float = 8.31447
 
     @property
     def tau_s(self) -> float:
@@ -378,11 +373,6 @@ class Fluxes(pydantic.BaseModel):
     @property
     def h(self) -> float:
         return self.V / self.A
-
-    @property
-    def factor_vol_to_molar(self) -> float:
-        # PV = nRT <=> n = PV / RT
-        return self.P / (self.gas_constant * self.T)
 
 
 class Config(pydantic.BaseModel):

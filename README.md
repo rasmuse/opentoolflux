@@ -232,4 +232,3 @@ This section will explain
 # Known limitations
 - Only supports setup with no recirculation
 - All the settings for measurements and fluxes are the same for all chambers
-- Temperature & pressure are constant

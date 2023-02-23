@@ -126,7 +126,7 @@ def plot_time_series(
     gases: Sequence[database.Colname],
     title: Optional[str] = None,
 ) -> Figure:
-    fluxes = fluxes.set_index(["gas", "t0"])["molar_flux"].sort_index()
+    fluxes = fluxes.set_index(["gas", "t0"])["vol_flux"].sort_index()
 
     # Rough calculation of height depending on number of panels;
     # nothing scientific at all and probably will break down for large numbers.
