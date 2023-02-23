@@ -221,19 +221,25 @@ def flux_time_series(ctx: click.Context):
 
 @overload
 def _get_chamber_label(
-    chamber_value: pd.Series, chamber_labels: ChamberLabels
+    chamber_value: pd.Series, chamber_labels: Optional[ChamberLabels]
 ) -> pd.Series:
     ...
 
 
 @overload
 def _get_chamber_label(
-    chamber_value: Union[int, float, bool, str], chamber_labels: ChamberLabels
+    chamber_value: Union[int, float, bool, str], chamber_labels: Optional[ChamberLabels]
 ) -> str:
     ...
 
 
 def _get_chamber_label(chamber_value, chamber_labels):
+    if chamber_labels is None:
+        if isinstance(chamber_value, pd.Series):
+            return chamber_value.astype(str)
+        else:
+            return str(chamber_value)
+
     type_ = (
         chamber_value.dtype
         if isinstance(chamber_value, pd.Series)
@@ -241,6 +247,17 @@ def _get_chamber_label(chamber_value, chamber_labels):
     )
     replacements = pd.Series(chamber_labels)
     replacements.index = replacements.index.astype(type_)
+
+    requested_values = (
+        set(chamber_value.unique())
+        if isinstance(chamber_value, pd.Series)
+        else {chamber_value}
+    )
+    values_with_labels = set(replacements.index)
+    missing = requested_values - values_with_labels
+    if missing:
+        raise click.UsageError(f"No chamber label specified for chambers {missing!r}")
+
     if isinstance(chamber_value, pd.Series):
         return chamber_value.replace(replacements).astype(str)
     else:
@@ -402,9 +419,19 @@ class Config(pydantic.BaseModel):
         default_factory=dict
     )
     measurements: Optional[Measurements] = pydantic.Field(default=None)
-    chamber_labels: ChamberLabels = pydantic.Field(default_factory=dict)
+    chamber_labels: Optional[ChamberLabels] = pydantic.Field(default=None)
     fluxes: Optional[Fluxes] = pydantic.Field(default=None)
     logging: Dict[str, Any] = logging_config.DEFAULT_LOG_SETTINGS
+
+    @pydantic.validator("chamber_labels")
+    def chamber_labels_must_be_one_to_one(cls, chamber_labels):
+        label_to_key = {v: k for k, v in chamber_labels.items()}
+        violator_keys = set(chamber_labels) - set(label_to_key.values())
+        violator_labels = {v for k, v in chamber_labels.items() if k in violator_keys}
+        violations = {k: v for k, v in chamber_labels.items() if v in violator_labels}
+        if violations:
+            raise BadConfig(f"chamber labels collide: {violations}")
+        return chamber_labels
 
     @classmethod
     def from_toml(cls, path: Path) -> Config:
