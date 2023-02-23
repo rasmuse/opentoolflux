@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import functools
 import logging
 import os
 from pathlib import Path
@@ -32,6 +33,21 @@ def nicely_repackage_config_problems(func):
             return func(*args, **kwargs)
         except (BadConfig, pydantic.ValidationError) as e:
             raise click.ClickException(str(e)) from e
+
+    return wrapper
+
+
+def require_database_file(func):
+    @functools.wraps(func)
+    def wrapper(ctx, *args, **kwargs):
+        conf: Config = ctx.obj["config"]
+        db_path = _get_db_path(conf)
+        if not db_path.exists():
+            raise click.UsageError(
+                f"No database found at {db_path}. "
+                f"First run the import command or copy a database file to {db_path}."
+            )
+        return func(ctx, *args, **kwargs)
 
     return wrapper
 
@@ -115,6 +131,7 @@ def _build_db_summary_row(db: pd.DataFrame):
 
 @main.command()
 @click.pass_context
+@require_database_file
 def info(ctx: click.Context):
     conf: Config = ctx.obj["config"]
     for _ in _iter_measurements(conf):
@@ -123,6 +140,7 @@ def info(ctx: click.Context):
 
 @main.command()
 @click.pass_context
+@require_database_file
 def fluxes(ctx: click.Context):
     conf: Config = ctx.obj["config"]
     result = _estimate_fluxes_result_table(_iter_measurements(conf), conf)
@@ -142,6 +160,7 @@ def plot(ctx: click.Context):
 
 @plot.command()
 @click.pass_context
+@require_database_file
 def flux_fits(ctx: click.Context):
     conf: Config = ctx.obj["config"]
     measurements = list(_iter_measurements(conf))
@@ -182,6 +201,7 @@ def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
 
 @plot.command()
 @click.pass_context
+@require_database_file
 def flux_time_series(ctx: click.Context):
     conf: Config = ctx.obj["config"]
     if conf.fluxes is None:

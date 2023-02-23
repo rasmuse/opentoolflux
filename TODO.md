@@ -10,7 +10,6 @@
 - Add notes on units of flux estimates
 - Add notes on dimensions of flux estimates (it's all volumetric)
 - Add friendly error message when trying to import data with columns/dtypes mismatch between existing database and config file
-- Add friendly error message when trying to run, e.g., `picarrito fluxes` without having a database
 - Allow nullable ints, uints, bools?
 - Add check that chamber labels is a one-to-one mapping
 - Autogenerate chamber labels when missing
