@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 TIMESTAMP_COLUMN = "__TIMESTAMP__"
 MICROSECONDS_PER_SECOND = 1e6
 MICROSECOND_NUMPY_TIMESTAMP = "datetime64[us]"
+NANOSECOND_NUMPY_TIMESTAMP = "datetime64[ns]"
 
 Colname = str
 DTypeName = Literal[
@@ -117,9 +118,13 @@ def _convert_datetime(s: pd.Series) -> pd.Series:
         )
     elif s.dtype.kind in {"i", "u"}:
         # Integers can be converted directly
-        return s.astype("datetime64")
+        return s.astype(NANOSECOND_NUMPY_TIMESTAMP)
     elif s.dtype.kind in {"O"}:
-        return pd.to_datetime(s, utc=True).dt.tz_localize(None).astype("datetime64")
+        return (
+            pd.to_datetime(s, utc=True)
+            .dt.tz_localize(None)
+            .astype(NANOSECOND_NUMPY_TIMESTAMP)
+        )
     else:
         raise NotImplementedError(f"Cannot make datetime from dtype {s.dtype}.")
 
