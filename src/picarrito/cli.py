@@ -55,8 +55,8 @@ def require_database_file(func):
         conf: Config = ctx.obj["config"]
         db_path = _get_db_path(conf)
         if not db_path.exists():
-            raise click.UsageError(
-                f"No database found at {db_path}. "
+            raise click.ClickException(
+                f"No database found at {db_path}. \n"
                 f"First run the import command or copy a database file to {db_path}."
             )
         return func(ctx, *args, **kwargs)
@@ -291,7 +291,12 @@ def _estimate_vol_flux(measurement: pd.DataFrame, gas: str, conf: Config):
         (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
         assert isinstance(chamber_value, (float, int, bool, str))
         type_ = type(chamber_value)
-        t0_delay = _convert_str_keys(conf.fluxes.t0_delay, type_)[chamber_value]
+        t0_delays = _convert_str_keys(conf.fluxes.t0_delay, type_)
+        if chamber_value not in t0_delays:
+            raise click.ClickException(
+                f"t0_delay not defined for chamber {chamber_value}"
+            )
+        t0_delay = t0_delays[chamber_value]
 
     return estimate_vol_flux(
         measurement[gas],
