@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+import collections
 import datetime
 import functools
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Union, overload
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import click
 import matplotlib.pyplot as plt
@@ -134,8 +146,20 @@ def _build_db_summary_row(db: pd.DataFrame):
 @require_database_file
 def info(ctx: click.Context):
     conf: Config = ctx.obj["config"]
-    for _ in _iter_measurements(conf):
-        pass
+    n_measurements = collections.defaultdict(int)
+    for m in _iter_measurements(conf):
+        assert conf.measurements
+        (chamber_value,) = m[conf.measurements.chamber_col].unique()
+        chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
+        n_measurements[chamber_label] += 1
+
+    n_measurements = (
+        pd.Series(n_measurements).rename_axis("Chamber").rename("Count").sort_index()
+    )
+    logger.info(
+        f"Found {n_measurements.sum()} measurement(s) "
+        f"from {len(n_measurements)} chamber(s):\n\n{n_measurements.to_frame()}"
+    )
 
 
 @main.command()
@@ -178,21 +202,17 @@ def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
         raise click.ClickException("The config file has no section [measurements].")
     if conf.fluxes is None:
         raise click.ClickException("The config file has no section [fluxes].")
+    (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
+
     flux_estimates_by_gas = {
-        gas: estimate_vol_flux(
-            measurement[gas],
-            t0_delay=conf.fluxes.t0_delay,
-            t0_margin=conf.fluxes.t0_margin,
-            tau_s=conf.fluxes.tau_s,
-            h=conf.fluxes.h,
-        )
-        for gas in conf.fluxes.gases
+        gas: _estimate_vol_flux(measurement, gas, conf) for gas in conf.fluxes.gases
     }
 
-    (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
-    chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
     fig = plot_measurement(
-        measurement, conf.fluxes.gases, flux_estimates_by_gas, title=chamber_label
+        measurement,
+        conf.fluxes.gases,
+        flux_estimates_by_gas,
+        title=_get_chamber_label(chamber_value, conf.chamber_labels),
     )
     plot_path = dst_dir / _build_measurement_file_name(measurement, conf, ".png")
     fig.savefig(plot_path)
@@ -219,49 +239,36 @@ def flux_time_series(ctx: click.Context):
         plt.close(fig)
 
 
-@overload
-def _get_chamber_label(
-    chamber_value: pd.Series, chamber_labels: Optional[ChamberLabels]
+def _get_chamber_labels_series(
+    chamber_values: pd.Series, chamber_labels: Optional[ChamberLabels]
 ) -> pd.Series:
-    ...
-
-
-@overload
-def _get_chamber_label(
-    chamber_value: Union[int, float, bool, str], chamber_labels: Optional[ChamberLabels]
-) -> str:
-    ...
-
-
-def _get_chamber_label(chamber_value, chamber_labels):
     if chamber_labels is None:
-        if isinstance(chamber_value, pd.Series):
-            return chamber_value.astype(str)
-        else:
-            return str(chamber_value)
+        return chamber_values.astype(str)
 
-    type_ = (
-        chamber_value.dtype
-        if isinstance(chamber_value, pd.Series)
-        else type(chamber_value)
-    )
     replacements = pd.Series(chamber_labels)
-    replacements.index = replacements.index.astype(type_)
+    replacements.index = replacements.index.astype(chamber_values.dtype)
 
     requested_values = (
-        set(chamber_value.unique())
-        if isinstance(chamber_value, pd.Series)
-        else {chamber_value}
+        set(chamber_values.unique())
+        if isinstance(chamber_values, pd.Series)
+        else {chamber_values}
     )
     values_with_labels = set(replacements.index)
     missing = requested_values - values_with_labels
     if missing:
         raise click.UsageError(f"No chamber label specified for chambers {missing!r}")
 
-    if isinstance(chamber_value, pd.Series):
-        return chamber_value.replace(replacements).astype(str)
+    if isinstance(chamber_values, pd.Series):
+        return chamber_values.replace(replacements).astype(str)
     else:
-        return replacements[chamber_value]
+        return replacements[chamber_values]
+
+
+def _get_chamber_label(
+    chamber_value: Union[int, float, bool, str],
+    chamber_labels: Optional[ChamberLabels],
+):
+    return _get_chamber_labels_series(pd.Series([chamber_value]), chamber_labels)[0]
 
 
 def _build_measurement_file_name(measurement: pd.DataFrame, conf: Config, suffix: str):
@@ -273,25 +280,39 @@ def _build_measurement_file_name(measurement: pd.DataFrame, conf: Config, suffix
     return f"{chamber_label}-{data_start:%Y%m%d-%H%M%S}{suffix}"
 
 
+def _estimate_vol_flux(measurement: pd.DataFrame, gas: str, conf: Config):
+    assert conf.measurements is not None
+    assert conf.fluxes is not None
+
+    if isinstance(conf.fluxes.t0_delay, datetime.timedelta):
+        # If a single t0_delay is used for all chambers
+        t0_delay = conf.fluxes.t0_delay
+    else:
+        (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
+        assert isinstance(chamber_value, (float, int, bool, str))
+        type_ = type(chamber_value)
+        t0_delay = _convert_str_keys(conf.fluxes.t0_delay, type_)[chamber_value]
+
+    return estimate_vol_flux(
+        measurement[gas],
+        t0_delay=t0_delay,
+        t0_margin=conf.fluxes.t0_margin,
+        tau_s=conf.fluxes.tau_s,
+        h=conf.fluxes.h,
+    )
+
+
 def _estimate_fluxes_result_table(measurements: Iterable[pd.DataFrame], conf: Config):
     if conf.measurements is None:
         raise click.ClickException("The config file has no section [measurements].")
     if conf.fluxes is None:
         raise click.ClickException("The config file has no section [fluxes].")
 
-    measurements_conf = conf.measurements
-    fluxes_conf = conf.fluxes
-
     def build_row(measurement: pd.DataFrame, gas: database.Colname):
-        flux_est = estimate_vol_flux(
-            measurement[gas],
-            t0_delay=fluxes_conf.t0_delay,
-            t0_margin=fluxes_conf.t0_margin,
-            tau_s=fluxes_conf.tau_s,
-            h=fluxes_conf.h,
-        )
+        flux_est = _estimate_vol_flux(measurement, gas, conf)
 
-        (chamber_value,) = measurement[measurements_conf.chamber_col].unique()
+        assert conf.measurements
+        (chamber_value,) = measurement[conf.measurements.chamber_col].unique()
 
         result_row = {
             **flux_est,
@@ -392,12 +413,13 @@ class Measurements(pydantic.BaseModel):
     max_duration: datetime.timedelta
 
 
-ChamberLabels = Mapping[str, str]
+ChamberLabel = str
+ChamberLabels = Mapping[str, ChamberLabel]
 
 
 class Fluxes(pydantic.BaseModel):
     gases: List[str]
-    t0_delay: datetime.timedelta
+    t0_delay: Union[datetime.timedelta, Dict[str, datetime.timedelta]]
     t0_margin: datetime.timedelta
     A: float
     Q: float
@@ -439,3 +461,13 @@ class Config(pydantic.BaseModel):
         with open(path, "rb") as f:
             obj = tomli.load(f)
         return cls.parse_obj(obj)
+
+
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+
+
+def _convert_str_keys(
+    d: Mapping[str, VT], convert: Callable[[Any], KT]
+) -> Mapping[KT, VT]:
+    return {convert(k): v for k, v in d.items()}
