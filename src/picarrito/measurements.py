@@ -5,7 +5,7 @@ import functools
 import logging
 import operator
 from dataclasses import dataclass
-from typing import Any, Iterator, List, Mapping, Optional
+from typing import Any, Iterator, List, Mapping, Optional, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -79,6 +79,11 @@ def _get_exclusions_summary(exclusions: pd.DataFrame) -> str:
     return f"Data excluded by filters:\n{summary}\n"
 
 
+class MeasurementMeta(TypedDict):
+    duration: datetime.timedelta
+    accept: bool
+
+
 def iter_measurements(
     db: pd.DataFrame,
     chamber_column: database.Colname,
@@ -90,12 +95,14 @@ def iter_measurements(
     gap_exceeded = db.index.to_series().diff() > max_gap
     measurement_number = (chamber_changed | gap_exceeded).cumsum()
 
-    measurement_metas = []
+    measurement_metas: list[MeasurementMeta] = []
 
     for _, measurement in db.groupby(measurement_number):
-        duration = measurement.index[-1] - measurement.index[0]
+        assert isinstance(measurement.index, pd.DatetimeIndex)
+        duration = measurement.index[-1] - measurement.index[0]  # type: ignore
+        assert isinstance(duration, datetime.timedelta), measurement.index
         accept = min_duration <= duration <= max_duration
-        measurement_metas.append(pd.Series(dict(duration=duration, accept=accept)))
+        measurement_metas.append({"duration": duration, "accept": accept})
 
         if accept:
             yield _ensure_float64_floats(measurement)
@@ -120,15 +127,22 @@ def _ensure_float64_floats(df: pd.DataFrame) -> pd.DataFrame:
     return df.astype(new_dtypes)  # type: ignore
 
 
-def _get_measurements_summary(metas: List[pd.Series]) -> str:
-    data = pd.DataFrame.from_records(metas)
+def _get_measurements_summary(metas: list[MeasurementMeta]) -> str:
+    if metas:
+        data = pd.DataFrame.from_records(metas)
+    else:
+        data = pd.DataFrame({"duration": [], "accept": []})
 
     summary = pd.DataFrame(
         {
             key: {
                 "Number of chunks": f"{len(subset):,}",
-                "Average duration": _format_duration(subset["duration"].mean()),
-                "Total duration": _format_duration(subset["duration"].sum()),
+                "Average duration": _format_duration(
+                    subset["duration"].mean() if len(subset) else None
+                ),
+                "Total duration": _format_duration(
+                    subset["duration"].sum() if len(subset) else datetime.timedelta()
+                ),
             }
             for key, subset in [
                 ("All chunks", data),
@@ -141,7 +155,9 @@ def _get_measurements_summary(metas: List[pd.Series]) -> str:
     return str(summary)
 
 
-def _format_duration(duration: datetime.timedelta) -> str:
+def _format_duration(duration: Optional[datetime.timedelta]) -> str:
+    if duration is None:
+        return "-"
     remaining_seconds = duration.total_seconds()
     days = remaining_seconds // (3600 * 24)
     remaining_seconds -= days * (3600 * 24)
