@@ -12,3 +12,4 @@
 - Add friendly error message when trying to import data with columns/dtypes mismatch between existing database and config file
 - Allow nullable ints, uints, bools?
 - Allow columns to be str
+- Write full list of config settings in README
