@@ -1,3 +1,3 @@
-# 0.1.0dev (unreleased)
+# 0.1.0
 
-- Create package `opentoolflux`
+- First release
