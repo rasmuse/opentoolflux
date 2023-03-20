@@ -16,14 +16,14 @@ DEFAULT_LOG_SETTINGS = {
         },
     },
     "filters": {
-        "allow_picarrito": {"name": "picarrito"},
+        "allow_opentoolflux": {"name": "opentoolflux"},
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "level": "INFO",
             "formatter": "brief",
-            "filters": ["allow_picarrito"],
+            "filters": ["allow_opentoolflux"],
         },
         "file_debug": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -32,7 +32,7 @@ DEFAULT_LOG_SETTINGS = {
             "formatter": "detailed",
             "maxBytes": 1e6,
             "backupCount": 5,
-            "filters": ["allow_picarrito"],
+            "filters": ["allow_opentoolflux"],
         },
         "file_info": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -41,7 +41,7 @@ DEFAULT_LOG_SETTINGS = {
             "formatter": "detailed",
             "maxBytes": 1e6,
             "backupCount": 5,
-            "filters": ["allow_picarrito"],
+            "filters": ["allow_opentoolflux"],
         },
     },
     "root": {

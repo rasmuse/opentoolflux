@@ -24,16 +24,15 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pydantic
 import tomli
-
-from picarrito.fluxes import estimate_vol_flux
-from picarrito.plot import plot_measurement, plot_time_series
+from opentoolflux.fluxes import estimate_vol_flux
+from opentoolflux.plot import plot_measurement, plot_time_series
 
 from . import database, logging_config, measurements
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CONFIG_PATH = Path("picarrito.toml")
-_DEFAULT_OUTDIR = Path("picarrito")
+_DEFAULT_CONFIG_PATH = Path("opentoolflux.toml")
+_DEFAULT_OUTDIR = Path("opentoolflux")
 _DB_FILENAME = "database.feather"
 _PLOTS_SUBDIR = "plots"
 _FLUXES_FILENAME = "fluxes.csv"

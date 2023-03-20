@@ -1,5 +1,5 @@
 include CHANGES.md
 include tox.ini
 include requirements/*.txt
-include src/picarrito/resources/*
+include src/opentoolflux/resources/*
 global-exclude *.pyc

@@ -6,7 +6,7 @@
 - [Basic usage](#basic-usage)
   - [Run an example](#run-an-example)
   - [Use the built-in documentation](#use-the-built-in-documentation)
-  - [Configure Picarrito using a configuration file](#configure-picarrito-using-a-configuration-file)
+  - [Configure OpenToolFlux using a configuration file](#configure-opentoolflux-using-a-configuration-file)
   - [Import data from source files](#import-data-from-source-files)
   - [Other ways to get a database](#other-ways-to-get-a-database)
   - [Estimate gas fluxes](#estimate-gas-fluxes)
@@ -21,7 +21,7 @@
 
 # Overview
 
-Picarrito is a software to estimate gas fluxes from soil using data from automatic chambers. The software is built for data from the [Picarro](https://www.picarro.com) brand of equipment but in principle could work with, or be adapted to, data from other similar equipment.
+OpenToolFlux is a software to estimate gas fluxes from soil using data from automatic chambers. The software is built for data from the [Picarro](https://www.picarro.com) brand of equipment but in principle could work with, or be adapted to, data from other similar equipment.
 
 The software analyzes time series of gas concentrations in gas collected from multiple automated chambers connected to a single gas analyzer. The multiple chambers sequentially close (e.g. in 20-minute intervals) and gas is continuously pumped into the analyzer from the currently closed chamber. The profile of the concentration change during each chamber closure is used to estimate the flux from the soil under that chamber. [A separate section below describes in further detail how the calculation works and what it assumes.](#how-the-flux-estimation-works)
 
@@ -35,7 +35,7 @@ The software is used through a command-line interface (CLI) which allows the use
 
 # Installation
 
-Picarrito is written in Python and works with Python 3.8+.
+OpenToolFlux is written in Python and works with Python 3.8+.
 
 This installation guide assumes that you already have Python 3.8+ and that you know how to use a terminal and install Python packages using `pip`. If you are unsure about any of these points, you might find it helpful to follow the instructions given by any of these sources:
 
@@ -47,14 +47,14 @@ This installation guide assumes that you already have Python 3.8+ and that you k
 How to install:
 
 - Optionally, create and activate a virtual environment.
-- Install using `pip install picarrito`
-- Verify that the installation was successful by running the command `picarrito --help`. If the installation has succeeded, this will show a list of the available commands.
+- Install using `pip install opentoolflux`
+- Verify that the installation was successful by running the command `opentoolflux --help`. If the installation has succeeded, this will show a list of the available commands.
 
 If installation according to these instructions fail, please submit a bug report [using the issue tracker](issues).
 
 # Basic usage
 
-The command-line interface consists of a command `picarrito` with a number of subcommands such as `picarrito import` and `picarrito fluxes`. Here is a quick introduction to basic usage of the command-line interface.
+The command-line interface consists of a command `opentoolflux` with a number of subcommands such as `opentoolflux import` and `opentoolflux fluxes`. Here is a quick introduction to basic usage of the command-line interface.
 
 ## Run an example
 
@@ -65,24 +65,24 @@ You might find it instructive to get started using an example. An example of a c
 The command-line interface has built-in documentation which is accessed by calling commands such as:
 
 ```
-picarrito --help
-picarrito import --help
+opentoolflux --help
+opentoolflux import --help
 ```
 
 When adding `--help` to a command, the command will do nothing except print an information message.
 
-We recommend exploring the software by reading the built-in help and experimenting with commands on some test data. Picarrito will never change or delete your source data files, so you can safely play around. (And in any case, you do have a backup of your important research data, _right_?)
+We recommend exploring the software by reading the built-in help and experimenting with commands on some test data. OpenToolFlux will never change or delete your source data files, so you can safely play around. (And in any case, you do have a backup of your important research data, _right_?)
 
-## Configure Picarrito using a configuration file
+## Configure OpenToolFlux using a configuration file
 
-Most configuration is made in a configuration file written in [TOML language](https://toml.io/en/). All the configuration options are listed and explained in the example file found here: [example/picarrito.toml](example/picarrito.toml).
+Most configuration is made in a configuration file written in [TOML language](https://toml.io/en/). All the configuration options are listed and explained in the example file found here: [example/opentoolflux.toml](example/opentoolflux.toml).
 
 A small number of configuration options can be made on the command line. These are listed and explained [in the built-in documentation](#use-the-built-in-documentation).
 
-Picarrito by default looks for a configuration file named `picarrito.toml` in the working directory. This default can be overridden using the `--config` flag as follows:
+OpenToolFlux by default looks for a configuration file named `opentoolflux.toml` in the working directory. This default can be overridden using the `--config` flag as follows:
 
 ```
-picarrito --config my_config.toml [command]
+opentoolflux --config my_config.toml [command]
 ```
 
 ## Import data from source files
@@ -90,16 +90,16 @@ picarrito --config my_config.toml [command]
 When the configuration file is in place, import data from source files using the following command:
 
 ```
-picarrito import
+opentoolflux import
 ```
 
-This will create a new database, or add data to an existing one, located at `picarrito/database.feather`. The data files to read are specified in the `import` section of the [config file](#configuration-options). Read more below about [the source data file format](#source-data-file-format).
+This will create a new database, or add data to an existing one, located at `opentoolflux/database.feather`. The data files to read are specified in the `import` section of the [config file](#configuration-options). Read more below about [the source data file format](#source-data-file-format).
 
-Note: `picarrito` will never change or remove the source data files, so you can safely try commands to see what happens. If you want to start over from zero, simply remove the `database.feather` file and run `picarrito import` again.
+Note: `opentoolflux` will never change or remove the source data files, so you can safely try commands to see what happens. If you want to start over from zero, simply remove the `database.feather` file and run `opentoolflux import` again.
 
 ## Other ways to get a database
 
-It is also possible to copy the `picarrito/database.feather` file between computers. To "export" the database, simply copy the `database.feather` file and save it on a USB stick or network drive, or even send it by email if it's not too large.
+It is also possible to copy the `opentoolflux/database.feather` file between computers. To "export" the database, simply copy the `database.feather` file and save it on a USB stick or network drive, or even send it by email if it's not too large.
 
 You can also create the database file in any other way you like, following the [technical specification of the database below](#the-database-file).
 
@@ -108,7 +108,7 @@ You can also create the database file in any other way you like, following the [
 When the `database.feather` file is in place, estimate gas fluxes using the following command:
 
 ```
-picarrito fluxes
+opentoolflux fluxes
 ```
 
 This will do several things:
@@ -117,25 +117,25 @@ This will do several things:
 - Split the remaining data into segments by chamber as specified in the `measurements` section of the [config file](#configuration-options).
 - Ignore any segments that are too short or too long, following the `measurements` section of the [config file](#configuration-options). Unexpectedly short segments can be created, for example, if the equipment is shut down or restarted.
 - For each of the remaining measurements, estimate the flux as specified in the `fluxes` section of the [config file](#configuration-options). (Read more about [how the flux estimation works](#how-the-flux-estimation-works) below.)
-- Save all the results to a file `picarrito/fluxes.csv`.
+- Save all the results to a file `opentoolflux/fluxes.csv`.
 
 ## Plot results
 
-The command group `picarrito plot` can be used to generate the following figures:
+The command group `opentoolflux plot` can be used to generate the following figures:
 
 ### `flux-fits`: flux estimation diagnostics
 
 To visualize the gas flux estimation and identify potential problems, run the following command:
 
 ```
-picarrito plot flux-fits
+opentoolflux plot flux-fits
 ```
 
-This command estimates gas fluxes following [the same steps as the `picarrito fluxes` command](#estimating-gas-fluxes), but instead of a results table it outputs one figure for each measurement in the folder `picarrito/plots/flux-fits`. Each figure shows the gas concentration(s) over time during a chamber closure, and the curve that has been fit to estimate the gas flux(es).
+This command estimates gas fluxes following [the same steps as the `opentoolflux fluxes` command](#estimating-gas-fluxes), but instead of a results table it outputs one figure for each measurement in the folder `opentoolflux/plots/flux-fits`. Each figure shows the gas concentration(s) over time during a chamber closure, and the curve that has been fit to estimate the gas flux(es).
 
 # The database file
 
-Picarrito uses a database file which is just a table stored as a [Feather file](https://arrow.apache.org/docs/python/feather.html). The default file path to the database is `picarrito_db.feather` stored in the same directory as the configuration file.
+OpenToolFlux uses a database file which is just a table stored as a [Feather file](https://arrow.apache.org/docs/python/feather.html). The default file path to the database is `opentoolflux_db.feather` stored in the same directory as the configuration file.
 
 The database has one row per sample and normally contains the following columns:
 - `__TIMESTAMP__`: a timestamp of the sample, in [UTC](https://en.wikipedia.org/wiki/Coordinated_Universal_Time). This column is used as primary key in the database, so the timestamps must be unique. The table must be sorted by timestamp in ascending order. The `__TIMESTAMP__` column is the only mandatory column in the database (although a database with only timestamps is not really useful).
@@ -143,7 +143,7 @@ The database has one row per sample and normally contains the following columns:
 - One column giving sample concentration of each gas to analyze, e.g., `CO2`, `CH4_dry` and/or `N2O_dry`.
 - Optionally, additional columns used to filter out samples. For example `ALARM_STATUS` in the case of Picarro data files.
 
-The command `picarrito import` ([see above](#import-data-from-source-files)) can be used to create the database from Picarro (or other) data files. It is also possible to create the database in any way (e.g., using a custom Python or R script). The database file can also be copied between folders or computers without any problem.
+The command `opentoolflux import` ([see above](#import-data-from-source-files)) can be used to create the database from Picarro (or other) data files. It is also possible to create the database in any way (e.g., using a custom Python or R script). The database file can also be copied between folders or computers without any problem.
 
 ## On data types and database size
 
@@ -186,7 +186,7 @@ If we collect one data row per second during one year, the resulting database si
 
 This example also shows that if your dataset is perhaps only a few weeks long with frequency 1 second, or maybe one year with frequency 1 minute, the database file will anyway be so small that there are probably very few reasons to worry about database size.
 
-A final related note is that floating-point data to be converted to timestamps in the `picarrito import` command should always be `float64`. The conversion of floating-point Unix timestamps (in seconds) is designed to preserve 6 decimal places (microseconds), something which requires `float64`. The `__TIMESTAMP__` column in the end is always encoded using 64 bits anyway, so there is no space to be saved by parsing the timestamp column as a `float32`. Failure to specify `float64` as data type for the timestamp column raises a helpful error message.
+A final related note is that floating-point data to be converted to timestamps in the `opentoolflux import` command should always be `float64`. The conversion of floating-point Unix timestamps (in seconds) is designed to preserve 6 decimal places (microseconds), something which requires `float64`. The `__TIMESTAMP__` column in the end is always encoded using 64 bits anyway, so there is no space to be saved by parsing the timestamp column as a `float32`. Failure to specify `float64` as data type for the timestamp column raises a helpful error message.
 
 # Source data file format
 
@@ -218,7 +218,7 @@ One of the columns must contain timestamps of the measurements. The timestamps c
   - in any other timezone, e.g., `"2021-12-07 13:00:24.123+0200"`, or
   - without timezone, e.g., `"2021-12-07 13:00:24"`, which will be interpreted as UTC.
 
-When running the [`picarrito import` command](#import-data-from-source-files), the timestamp source column is converted to UTC timestamps following the above rules, and renamed to `__TIMESTAMP__`.
+When running the [`opentoolflux import` command](#import-data-from-source-files), the timestamp source column is converted to UTC timestamps following the above rules, and renamed to `__TIMESTAMP__`.
 
 # How the flux estimation works
 

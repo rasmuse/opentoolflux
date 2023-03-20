@@ -1,9 +1,8 @@
 import datetime
 
 import numpy as np
+import opentoolflux.fluxes
 import pandas as pd
-
-import picarrito.fluxes
 
 
 def test_recover_flux():
@@ -26,7 +25,7 @@ def test_recover_flux():
     )
 
     # With t0_delay and tau correctly specified; should work perfectly
-    result = picarrito.fluxes.estimate_vol_flux(
+    result = opentoolflux.fluxes.estimate_vol_flux(
         measurement,
         t0_delay=datetime.timedelta(seconds=t0_delay),
         t0_margin=datetime.timedelta(seconds=0),
@@ -38,7 +37,7 @@ def test_recover_flux():
     assert _rel_error(result["vol_flux"], F) < 1e-3
 
     # With t0_delay and tau correctly specified and an extra margin; still works
-    result = picarrito.fluxes.estimate_vol_flux(
+    result = opentoolflux.fluxes.estimate_vol_flux(
         measurement,
         t0_delay=datetime.timedelta(seconds=t0_delay),
         t0_margin=datetime.timedelta(seconds=t0_margin),
@@ -49,7 +48,7 @@ def test_recover_flux():
     assert _rel_error(result["vol_flux"], F) < 1e-3
 
     # With t0_delay specified too low, picks up bad data and gets an error
-    result = picarrito.fluxes.estimate_vol_flux(
+    result = opentoolflux.fluxes.estimate_vol_flux(
         measurement,
         t0_delay=datetime.timedelta(seconds=0),
         t0_margin=datetime.timedelta(seconds=0),

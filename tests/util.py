@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence, Tuple
 
+import opentoolflux.database
 import pandas as pd
-
-import picarrito.database
 
 
 def build_db(
@@ -19,10 +18,10 @@ def build_db(
         )
         .assign(
             **{
-                picarrito.database.TIMESTAMP_COLUMN: _build_timestamps(timestamps),
+                opentoolflux.database.TIMESTAMP_COLUMN: _build_timestamps(timestamps),
             }
         )
-        .set_index(picarrito.database.TIMESTAMP_COLUMN)
+        .set_index(opentoolflux.database.TIMESTAMP_COLUMN)
     )
 
 

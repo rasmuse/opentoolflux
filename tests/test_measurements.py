@@ -5,10 +5,10 @@ import itertools
 from dataclasses import dataclass
 
 import numpy as np
+import opentoolflux.database
 import pandas.testing
+from opentoolflux.measurements import Filter, filter_db, iter_measurements
 
-import picarrito.database
-from picarrito.measurements import Filter, filter_db, iter_measurements
 from tests.util import build_db
 
 
@@ -24,7 +24,7 @@ def test_filter():
     )
 
     filters = {
-        picarrito.database.TIMESTAMP_COLUMN: Filter(
+        opentoolflux.database.TIMESTAMP_COLUMN: Filter(
             min_value=np.datetime64("1970-01-01 00:00:02.53")
         ),
         "A": Filter(disallow=["A"]),

@@ -4,11 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Tuple, Type, Union
 
+import opentoolflux.database
 import pandas as pd
 import pandas.testing
 import pytest
-
-import picarrito.database
 
 from .util import build_db
 
@@ -271,14 +270,14 @@ def test_source_file_parsing(case: SourceParseCase):
     buffer = io.StringIO(case.src_text)
 
     if isinstance(case.expected_result, pd.DataFrame):
-        result = picarrito.database.read_src_file(
+        result = opentoolflux.database.read_src_file(
             buffer, case.dtypes, case.timestamp_col, case.sep
         )
         print(result)
         pandas.testing.assert_frame_equal(result, case.expected_result)
     else:
         with pytest.raises(case.expected_result):
-            picarrito.database.read_src_file(
+            opentoolflux.database.read_src_file(
                 buffer, case.dtypes, case.timestamp_col, case.sep
             )
 
@@ -289,8 +288,8 @@ def test_db_save_and_load(case: SourceParseCase, tmp_path: Path):
         return
     db_path = tmp_path / "db"
     db = case.expected_result
-    picarrito.database.save_db(db, db_path)
-    db_roundtripped = picarrito.database.read_db(db_path)
+    opentoolflux.database.save_db(db, db_path)
+    db_roundtripped = opentoolflux.database.read_db(db_path)
     pandas.testing.assert_frame_equal(db, db_roundtripped)
 
 
@@ -298,26 +297,26 @@ def test_update_db():
     db_1 = build_db([1.1, 2.2, 4.4], {"B": ("uint8", [1, 2, 4])})
     db_2 = build_db([2.2, 3.3], {"B": ("uint8", [5, 3])})
     expected_result = build_db([1.1, 2.2, 3.3, 4.4], {"B": ("uint8", [1, 5, 3, 4])})
-    result = picarrito.database.update(db_1, db_2)
+    result = opentoolflux.database.update(db_1, db_2)
     pandas.testing.assert_frame_equal(result, expected_result)
 
     with pytest.raises(ValueError):
         db_2_other_dtype = build_db([2.2, 3.3], {"B": ("uint16", [5, 3])})
-        picarrito.database.update(db_1, db_2_other_dtype)
+        opentoolflux.database.update(db_1, db_2_other_dtype)
 
     with pytest.raises(ValueError):
         db_2_extra_column = build_db(
             [2.2, 3.3], {"B": ("uint8", [5, 3]), "C": ("uint8", [5, 3])}
         )
-        picarrito.database.update(db_1, db_2_extra_column)
+        opentoolflux.database.update(db_1, db_2_extra_column)
 
     with pytest.raises(ValueError):
         db_2_missing_column = build_db([2.2, 3.3], {})
-        picarrito.database.update(db_1, db_2_missing_column)
+        opentoolflux.database.update(db_1, db_2_missing_column)
 
 
 def test_create_empty_db():
     dtypes = {"x": "float32", "y": "uint8"}
-    result = picarrito.database.create_empty_db({"t": "float64", **dtypes}, "t")
+    result = opentoolflux.database.create_empty_db({"t": "float64", **dtypes}, "t")
     assert len(result) == 0
     assert result.dtypes.to_dict() == dtypes

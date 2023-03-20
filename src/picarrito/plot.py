@@ -8,8 +8,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
-
-from picarrito import fluxes
+from opentoolflux import fluxes
 
 from . import database
 
@@ -17,7 +16,7 @@ from . import database
 # https://github.com/matplotlib/matplotlib/issues/21950
 mpl.use("agg")
 
-with resources.path("picarrito.resources", "matplotlib-style") as path:
+with resources.path("opentoolflux.resources", "matplotlib-style") as path:
     mpl.style.use(path)  # pyright: reportGeneralTypeIssues=false
 
 
