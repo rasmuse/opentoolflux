@@ -8,6 +8,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.figure import Figure
+
 from opentoolflux import fluxes
 
 from . import database

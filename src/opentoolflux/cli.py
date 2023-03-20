@@ -24,6 +24,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pydantic
 import tomli
+
 from opentoolflux.fluxes import estimate_vol_flux
 from opentoolflux.plot import plot_measurement, plot_time_series
 
