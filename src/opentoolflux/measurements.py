@@ -136,7 +136,7 @@ def _get_measurements_summary(metas: list[MeasurementMeta]) -> str:
     summary = pd.DataFrame(
         {
             key: {
-                "Number of chunks": f"{len(subset):,}",
+                "Number of segments": f"{len(subset):,}",
                 "Average duration": _format_duration(
                     subset["duration"].mean() if len(subset) else None
                 ),
@@ -145,8 +145,8 @@ def _get_measurements_summary(metas: list[MeasurementMeta]) -> str:
                 ),
             }
             for key, subset in [
-                ("All chunks", data),
-                ("Rejected chunks", data[~data["accept"]]),
+                ("All segments", data),
+                ("Rejected segments", data[~data["accept"]]),
                 ("Final measurements", data[data["accept"]]),
             ]
         }

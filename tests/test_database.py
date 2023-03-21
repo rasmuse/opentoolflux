@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Optional, Sequence, Tuple, Type, Union
 
-import opentoolflux.database
 import pandas as pd
 import pandas.testing
 import pytest
+
+import opentoolflux.database
 
 from .util import build_db
 
@@ -54,6 +55,29 @@ source_parse_cases = [
             {
                 "B": ("float32", [1.2, 2.2, 3.2]),
                 "C": ("uint8", [1, 2, 3]),
+            },
+        ),
+    ),
+    SourceParseCase(  # string data
+        "\n".join(
+            [
+                "A    B    C",
+                "3.1  B3   3",
+                "2.1  B2   2",
+                "1.1  B1   1",
+            ]
+        ),
+        {
+            "A": "float64",
+            "B": "str",
+            "C": "str",
+        },
+        "A",
+        build_db(
+            [1.1, 2.1, 3.1],
+            {
+                "B": ("str", ["B1", "B2", "B3"]),
+                "C": ("str", ["1", "2", "3"]),
             },
         ),
     ),
