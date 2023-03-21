@@ -5,6 +5,7 @@ import datetime
 import functools
 import logging
 import os
+import shutil
 from pathlib import Path
 from typing import (
     Any,
@@ -25,6 +26,7 @@ import pandas as pd
 import pydantic
 import tomli
 
+import opentoolflux
 from opentoolflux.fluxes import estimate_vol_flux
 from opentoolflux.plot import plot_measurement, plot_time_series
 
@@ -69,13 +71,14 @@ def require_database_file(func):
 @click.option(
     "config_path",
     "--config",
-    type=click.Path(dir_okay=False, path_type=Path, exists=True),
+    type=click.Path(dir_okay=False, path_type=Path),
     default=_DEFAULT_CONFIG_PATH,
 )
+@click.version_option(opentoolflux.__version__)
 @nicely_repackage_config_problems
 def main(ctx: click.Context, config_path: Path):
     ctx.ensure_object(dict)
-    conf = Config.from_toml(config_path)
+    conf = Config.from_toml(config_path) if config_path.exists() else Config()
     ctx.obj["config"] = conf
 
     work_dir = config_path.parent
@@ -87,9 +90,17 @@ def main(ctx: click.Context, config_path: Path):
 @main.command(name="import")
 @click.pass_context
 def import_(ctx: click.Context):
+    """
+    Import data, creating or updating a database file.
+
+    This command can be run multiple times without problems. The column specified as
+    `timestamp_col` in the configuration file is used as key. Import data with
+    timestamps a already existing in the database file are left unchanged, while
+    new data are added to the database.
+    """
     conf: Config = ctx.obj["config"]
     if conf.import_ is None:
-        raise click.ClickException("The config file has no section [import].")
+        raise click.ClickException("The config has no section [import].")
 
     db_path = _get_db_path(conf)
 
@@ -145,6 +156,9 @@ def _build_db_summary_row(db: pd.DataFrame):
 @click.pass_context
 @require_database_file
 def info(ctx: click.Context):
+    """
+    Print some info about the database.
+    """
     conf: Config = ctx.obj["config"]
     n_measurements = collections.defaultdict(int)
     for m in _iter_measurements(conf):
@@ -166,6 +180,11 @@ def info(ctx: click.Context):
 @click.pass_context
 @require_database_file
 def fluxes(ctx: click.Context):
+    """
+    Estimate fluxes and save to a csv file in the output directory.
+
+    This command overwrites previous flux estimates.
+    """
     conf: Config = ctx.obj["config"]
     result = _estimate_fluxes_result_table(_iter_measurements(conf), conf)
     fluxes_path = conf.general.outdir / _FLUXES_FILENAME
@@ -179,6 +198,9 @@ def fluxes(ctx: click.Context):
 @main.group()
 @click.pass_context
 def plot(ctx: click.Context):
+    """
+    Create figures for diagnostics (subcommands available).
+    """
     pass
 
 
@@ -186,10 +208,20 @@ def plot(ctx: click.Context):
 @click.pass_context
 @require_database_file
 def flux_fits(ctx: click.Context):
+    """
+    Estimate fluxes and create figures showing time series and curve fits.
+
+    These figures are useful to identify potential problems in the data, and to
+    ensure that `t0_delay` and `t0_margin` parameters are set correctly.
+
+    Pre-existing flux-fits figures are automatically removed by this command.
+    """
     conf: Config = ctx.obj["config"]
     measurements = list(_iter_measurements(conf))
     plot_dir = conf.general.outdir / _PLOTS_SUBDIR / "flux-fits"
-    plot_dir.mkdir(parents=True, exist_ok=True)
+    if plot_dir.exists():
+        shutil.rmtree(plot_dir)
+    plot_dir.mkdir(parents=True, exist_ok=False)
     with click.progressbar(
         measurements, label="Plotting measurements", show_pos=True
     ) as measurements:
@@ -223,12 +255,23 @@ def _plot_flux_fit(measurement: pd.DataFrame, dst_dir: Path, conf: Config):
 @click.pass_context
 @require_database_file
 def flux_time_series(ctx: click.Context):
+    """
+    Estimate fluxes and create time-series figures with fluxes for each chamber.
+
+    These figures are useful to get a first view of flux variations over time
+    by chamber. Further plotting and analysis can be made based on results created
+    using the `fluxes` command.
+
+    Pre-existing flux time series figures are automatically removed by this command.
+    """
     conf: Config = ctx.obj["config"]
     if conf.fluxes is None:
         raise click.ClickException("The config file has no section [fluxes].")
     fluxes = _estimate_fluxes_result_table(_iter_measurements(conf), conf)
     plot_dir = conf.general.outdir / _PLOTS_SUBDIR / "flux-time-series"
-    plot_dir.mkdir(parents=True, exist_ok=True)
+    if plot_dir.exists():
+        shutil.rmtree(plot_dir)
+    plot_dir.mkdir(parents=True, exist_ok=False)
 
     for chamber_value, chamber_data in fluxes.groupby("chamber_value"):
         chamber_label = _get_chamber_label(chamber_value, conf.chamber_labels)
