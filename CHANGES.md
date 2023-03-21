@@ -1,4 +1,4 @@
-# 0.2.0dev (not released)
+# 0.2.1 (not released)
 
 - Improve formatting of log files to accomodate longest module names.
 
