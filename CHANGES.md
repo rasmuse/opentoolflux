@@ -1,4 +1,4 @@
-# 0.1.0dev (not released)
+# 0.2.0
 
 - Add `--version` flag to CLI.
 - Remove pre-existing figure files with `plot` commands.
