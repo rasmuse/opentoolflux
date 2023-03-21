@@ -9,7 +9,7 @@ LogSettingsDict = Dict[str, Any]
 DEFAULT_LOG_SETTINGS = {
     "formatters": {
         "detailed": {
-            "format": "%(asctime)s %(levelname)-8s %(name)-22s %(message)s",
+            "format": "%(asctime)s %(levelname)-8s %(name)-25s %(message)s",
         },
         "brief": {
             "format": "%(levelname)-8s %(message)s",

@@ -1,3 +1,7 @@
+# 0.2.0dev (not released)
+
+- Improve formatting of log files to accomodate longest module names.
+
 # 0.2.0
 
 - Add `--version` flag to CLI.
