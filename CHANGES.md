@@ -1,3 +1,7 @@
+# 0.2.2dev (unreleased)
+
+- Fix link to example in README.
+
 # 0.2.2 (2023-03-21)
 
 - Test on Python 3.11, 3.10, 3.9, 3.8

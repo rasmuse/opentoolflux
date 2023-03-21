@@ -65,7 +65,7 @@ The command-line interface consists of a command `opentoolflux` with subcommands
 
 ## Run an example
 
-You might find it instructive to get started using an example. An example of a configuration file, input data, and corresponding output data can be downloaded from here: [example](example).
+You might find it instructive to get started using an example. An example of a configuration file, input data, and corresponding output data can be downloaded from here: [https://github.com/rasmuse/flux-estimation-example](https://github.com/rasmuse/flux-estimation-example).
 
 ## Use the built-in documentation
 
