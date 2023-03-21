@@ -1,4 +1,4 @@
-# 0.2.2dev (unreleased)
+# 0.2.3 (2023-03-21)
 
 - Fix link to example in README.
 
