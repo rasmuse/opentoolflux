@@ -30,6 +30,7 @@ DTypeName = Literal[
     "float32",
     "float64",
     "bool",
+    "str",
 ]
 DTypes = Mapping[Colname, DTypeName]
 
