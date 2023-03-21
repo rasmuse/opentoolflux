@@ -43,6 +43,8 @@ To run the whole tox testing party, do
 tox
 ```
 
+The `.python-version` file specifies Python versions used for testing; this is intended for use with [`pyenv`](https://github.com/pyenv/pyenv).
+
 
 # Specifying dev and testing requirements using  `pip-compile`
 
