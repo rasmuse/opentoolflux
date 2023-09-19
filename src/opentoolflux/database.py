@@ -78,7 +78,7 @@ def find_files(glob_patterns: list[str]) -> List[Path]:
 
 
 def _dataframe_to_db(data: pd.DataFrame, timestamp_col: Colname) -> pd.DataFrame:
-    data[TIMESTAMP_COLUMN] = _convert_datetime(data[timestamp_col])
+    data[TIMESTAMP_COLUMN] = convert_datetime(data[timestamp_col])
     del data[timestamp_col]
     data.set_index(TIMESTAMP_COLUMN, inplace=True)
     data.sort_index(inplace=True)
@@ -88,7 +88,13 @@ def _dataframe_to_db(data: pd.DataFrame, timestamp_col: Colname) -> pd.DataFrame
     return data
 
 
-def _convert_datetime(s: pd.Series) -> pd.Series:
+def convert_datetime(s: pd.Series) -> pd.Series:
+    """
+    Convert numeric Unix timestamps in seconds (float or int) to datetime[ns]
+
+    This function ensures that float input data is reproduced to the
+    6th decimal (i.e., microseconds).
+    """
     if s.dtype.kind in {"f"}:
         # Floating point troubles!
         #

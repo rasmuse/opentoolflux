@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence, Tuple
 
-import opentoolflux.database
 import pandas as pd
+
+import opentoolflux.database
 
 
 def build_db(
@@ -18,12 +19,10 @@ def build_db(
         )
         .assign(
             **{
-                opentoolflux.database.TIMESTAMP_COLUMN: _build_timestamps(timestamps),
+                opentoolflux.database.TIMESTAMP_COLUMN: opentoolflux.database.convert_datetime(
+                    pd.Series(timestamps)
+                ),
             }
         )
         .set_index(opentoolflux.database.TIMESTAMP_COLUMN)
     )
-
-
-def _build_timestamps(values: list[float]):
-    return pd.Series(values).mul(1e3).astype("datetime64[ms]")

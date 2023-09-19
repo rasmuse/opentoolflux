@@ -1,3 +1,7 @@
+# 0.2.4 (unreleased)
+
+- Fix failing tests due to type mismatch `datetime64[ns]` vs `datetime64[ms]`.
+
 # 0.2.3 (2023-03-21)
 
 - Fix link to example in README.
