@@ -90,7 +90,9 @@ def _dataframe_to_db(data: pd.DataFrame, timestamp_col: Colname) -> pd.DataFrame
 
 def convert_datetime(s: pd.Series) -> pd.Series:
     """
-    Convert numeric Unix timestamps in seconds (float or int) to datetime[ns]
+    Convert pandas.Series to datetime[ns].
+
+    Numeric data is interpreted as Unix timestamps in seconds.
 
     This function ensures that float input data is reproduced to the
     6th decimal (i.e., microseconds).
@@ -122,13 +124,14 @@ def convert_datetime(s: pd.Series) -> pd.Series:
             .mul(MICROSECONDS_PER_SECOND)
             .round()
             .astype(MICROSECOND_NUMPY_TIMESTAMP)
+            .astype(NANOSECOND_NUMPY_TIMESTAMP)
         )
     elif s.dtype.kind in {"i", "u"}:
         # Integers can be converted directly
         return s.astype(NANOSECOND_NUMPY_TIMESTAMP)
     elif s.dtype.kind in {"O"}:
         return (
-            pd.to_datetime(s, utc=True)
+            pd.to_datetime(s, utc=True, format="ISO8601")
             .dt.tz_localize(None)
             .astype(NANOSECOND_NUMPY_TIMESTAMP)
         )

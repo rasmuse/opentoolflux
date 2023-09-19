@@ -256,7 +256,7 @@ Each source data file must have a one-line header specifying the column names.
 One of the columns must contain timestamps of the measurements (in the example above, the colum `EPOCH_TIME`). The timestamps can be encoded as:
 
 - Numeric values, which are interpreted to be [Unix timestamps](https://en.wikipedia.org/wiki/Unix_time) expressed in seconds. In Picarro data files, the `EPOCH_TIME` column is a Unix timestamp in seconds (with three decimals, giving millisecond resolution).
-- String values, which are parsed using [`pandas.to_datetime()`](https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html) and then converted to UTC timestamps. This means that timestamp strings can be expressed
+- String values, which are parsed using [`pandas.to_datetime(values, format="ISO8601", utc=True)`](https://pandas.pydata.org/docs/reference/api/pandas.to_datetime.html) and then converted to UTC timestamps. This means that timestamp strings can be expressed
   - in UTC using a string such as `"2021-12-07T11:00:24.123Z"`,
   - in any other timezone, e.g., `"2021-12-07 13:00:24.123+0200"`, or
   - without timezone, e.g., `"2021-12-07 13:00:24"`, which will be interpreted as UTC.
