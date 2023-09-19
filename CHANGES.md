@@ -1,6 +1,7 @@
 # 0.2.4 (unreleased)
 
 - Fix failing tests due to type mismatch `datetime64[ns]` vs `datetime64[ms]`.
+- Fix bug that appeared with pydantic v2.x, by pinning to pydantic 1.x.
 
 # 0.2.3 (2023-03-21)
 
